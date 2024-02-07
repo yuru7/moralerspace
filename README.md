@@ -4,7 +4,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 
 ```
   ∧＿＿∧
- (  ・∀・) ダウンロード -> xxx
+ (  ・∀・) ダウンロード -> https://github.com/yuru7/moralerspace/releases
  (       )
  ｜  ｜  ｜
  (＿＿)＿_)
