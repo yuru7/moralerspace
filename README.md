@@ -22,7 +22,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 以下のような特徴があります。
 
 - Texture healing システムを搭載した、GitHub 製 [Monaspace](https://github.com/githubnext/monaspace) 由来の英数字
-- ゆとりがあって読みやすい IBM 製 [IBM Plex Sans JP](https://github.com/IBM/plex) 由来の日本語文字
+- 文字の懐が広く読みやすい IBM 製 [IBM Plex Sans JP](https://github.com/IBM/plex) 由来の日本語文字
 - 文字幅比率が 半角3:全角5、ゆとりのある幅の半角英数字
 - バグの原因になりがちな全角スペースが可視化される
 
