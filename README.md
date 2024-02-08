@@ -1,16 +1,17 @@
 # Moralerspace
 
-Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/monaspace) と日本語フォント [IBM Plex Sans JP](https://github.com/IBM/plex) を合成したプログラミング向けフォントです。
+Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/monaspace) と日本語フォント [IBM Plex Sans JP](https://github.com/IBM/plex) などを合成したプログラミング向けフォントです。
 
 ```
   ∧＿＿∧
- (  ・∀・) ダウンロード -> https://github.com/yuru7/moralerspace/releases
+ (  ・∀・) マターリしようよ
  (       )
  ｜  ｜  ｜
  (＿＿)＿_)
-
-※「Assets」内の zip ファイルをダウンロードしてご利用ください。
 ```
+
+[🆕 **ダウンロード**](https://github.com/yuru7/moralerspace/releases)  
+※「Assets」内の zip ファイルをダウンロードしてご利用ください。
 
 > 💡 その他、公開中のプログラミングフォント
 > - 日本語文字に源柔ゴシック、英数字部分に Hack を使った [**白源 (はくげん／HackGen)**](https://github.com/yuru7/HackGen)
@@ -23,12 +24,14 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 
 - Texture healing システムを搭載した、GitHub 製 [Monaspace](https://github.com/githubnext/monaspace) 由来の英数字
 - 文字の懐が広く読みやすい IBM 製 [IBM Plex Sans JP](https://github.com/IBM/plex) 由来の日本語文字
+    - Radon 系統には [KiwiMaru](https://github.com/Kiwi-KawagotoKajiru/Kiwi-Maru) をベースに、足りないグリフを IBM Plex Sans JP で補完
+    - Krypton 系統には [Stick](https://github.com/fontworks-fonts/Stick) をベースに、足りないグリフを IBM Plex Sans JP で補完
 - 文字幅比率が 半角3:全角5、ゆとりのある幅の半角英数字
 - バグの原因になりがちな全角スペースが可視化される
 
 ## サンプル
 
-TODO あとで書く...
+![image](https://github.com/yuru7/moralerspace/assets/13458509/677dc824-dc5a-422b-a070-66484ad14a97)
 
 ## ビルド
 
