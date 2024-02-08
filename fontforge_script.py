@@ -23,6 +23,8 @@ SUFFIX_XENON = settings.get("DEFAULT", "SUFFIX_XENON")
 SUFFIX_RADON = settings.get("DEFAULT", "SUFFIX_RADON")
 SUFFIX_KRYPTON = settings.get("DEFAULT", "SUFFIX_KRYPTON")
 JP_FONT = settings.get("DEFAULT", "JP_FONT")
+JP_FONT_RADON = settings.get("DEFAULT", "JP_FONT_RADON")
+JP_FONT_KRYPTON = settings.get("DEFAULT", "JP_FONT_KRYPTON")
 ENG_FONT = settings.get("DEFAULT", "ENG_FONT")
 SOURCE_FONTS_DIR = settings.get("DEFAULT", "SOURCE_FONTS_DIR")
 BUILD_FONTS_DIR = settings.get("DEFAULT", "BUILD_FONTS_DIR")
@@ -46,6 +48,12 @@ Copyright (c) 2023, GitHub https://github.com/githubnext/monaspace
 
 [IBM Plex]
 Copyright © 2017 IBM Corp. https://github.com/IBM/plex
+
+[Kiwi Maru]
+Copyright 2020 The Kiwi Maru Project Authors https://github.com/Kiwi-KawagotoKajiru/Kiwi-Maru
+
+[Stick]
+Copyright 2020 The Stick Project Authors https://github.com/fontworks-fonts/Stick
 
 [Moralerspace]
 Copyright 2022 Yuko Otawara
@@ -89,27 +97,6 @@ def generate_neon():
         merged_style="Bold",
         suffix=SUFFIX_NEON,
     )
-    # # Light スタイルを生成する
-    # generate_font(
-    #     jp_style="Light",
-    #     eng_style="ExtraLight",
-    #     merged_style="Light",
-    #     suffix=SUFFIX_NEON,
-    # )
-    # # Medium スタイルを生成する
-    # generate_font(
-    #     jp_style="Medium",
-    #     eng_style="Medium",
-    #     merged_style="Medium",
-    #     suffix=SUFFIX_NEON,
-    # )
-    # # SemiBold スタイルを生成する
-    # generate_font(
-    #     jp_style="SemiBold",
-    #     eng_style="SemiBold",
-    #     merged_style="SemiBold",
-    #     suffix=SUFFIX_NEON,
-    # )
 
     # Regular Italic スタイルを生成する
     generate_font(
@@ -203,7 +190,7 @@ def generate_radon():
     """Radon系統を生成する"""
     # Regular スタイルを生成する
     generate_font(
-        jp_style="Text",
+        jp_style="Medium",
         eng_style="Regular",
         merged_style="Regular",
         suffix=SUFFIX_RADON,
@@ -218,13 +205,14 @@ def generate_radon():
 
     # Regular Italic スタイルを生成する
     generate_font(
-        jp_style="Text",
+        jp_style="Medium",
         eng_style="Italic",
         merged_style="Italic",
         suffix=SUFFIX_RADON,
         italic=True,
     )
     # Bold Italic スタイルを生成する
+    # generate_font(
     generate_font(
         jp_style="Bold",
         eng_style="BoldItalic",
@@ -238,7 +226,7 @@ def generate_krypton():
     """Krypton系統を生成する"""
     # Regular スタイルを生成する
     generate_font(
-        jp_style="Text",
+        jp_style="Regular",
         eng_style="Regular",
         merged_style="Regular",
         suffix=SUFFIX_KRYPTON,
@@ -253,7 +241,7 @@ def generate_krypton():
 
     # Regular Italic スタイルを生成する
     generate_font(
-        jp_style="Text",
+        jp_style="Regular",
         eng_style="Italic",
         merged_style="Italic",
         suffix=SUFFIX_KRYPTON,
@@ -299,10 +287,10 @@ def get_options():
 
 
 def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
-    print(f"=== Generate {merged_style} style ===")
+    print(f"=== Generate {suffix} {merged_style} ===")
 
     # 合成するフォントを開く
-    jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}")
+    jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
 
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
@@ -313,6 +301,10 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # 重複するグリフを削除する
     delete_duplicate_glyphs(jp_font, eng_font)
+
+    # Radonの場合は日本語フォントを少し斜めにする
+    if suffix == SUFFIX_RADON:
+        make_italic_radon(jp_font)
 
     # 日本語グリフの斜体を生成する
     if italic:
@@ -364,10 +356,39 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     eng_font.close()
 
 
-def open_fonts(jp_style: str, eng_style: str):
-    return fontforge.open(
-        f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf"
-    ), fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
+    """フォントを開く"""
+    if suffix == SUFFIX_RADON:
+        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_RADON}{jp_style}.ttf")
+        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+        # 足りないグラフをIBM Plex Sans JPで補う
+        if jp_style == "Medium":
+            jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
+        elif jp_style == "Bold":
+            jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
+        return jp_font, eng_font
+    elif suffix == SUFFIX_KRYPTON:
+        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_KRYPTON}{jp_style}.ttf")
+        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+        # 足りないグラフをIBM Plex Sans JPで補う
+        if jp_style == "Regular":
+            jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
+        elif jp_style == "Bold":
+            jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
+        return jp_font, eng_font
+    else:
+        return fontforge.open(
+            f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf"
+        ), fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+
+
+def make_italic_radon(jp_font):
+    # 斜体の傾き
+    ITALIC_SLOPE = 4
+    # 全グリフを斜体に変換
+    for glyph in jp_font.glyphs():
+        if glyph.isWorthOutputting():
+            glyph.transform(psMat.skew(ITALIC_SLOPE * math.pi / 180))
 
 
 def em_1000(font):
