@@ -32,6 +32,7 @@ VENDER_NAME = settings.get("DEFAULT", "VENDER_NAME")
 FONTFORGE_PREFIX = settings.get("DEFAULT", "FONTFORGE_PREFIX")
 IDEOGRAPHIC_SPACE = settings.get("DEFAULT", "IDEOGRAPHIC_SPACE")
 HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
+JPDOC_STR = settings.get("DEFAULT", "JPDOC_STR")
 # SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
 # INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
@@ -277,6 +278,8 @@ def get_options():
             options["invisible-zenkaku-space"] = True
         elif arg == "--half-width":
             options["half-width"] = True
+        elif arg == "--jpdoc":
+            options["jpdoc"] = True
         else:
             options["unknown-option"] = True
             return
@@ -292,8 +295,9 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
 
-    # TODO 合成に邪魔なグリフを削除する
-    # delete_unwanted_glyphs(eng_font)
+    # 日本語文書に頻出する記号を英語フォントから削除する
+    if options.get("jpdoc"):
+        remove_jpdoc_symbols(jp_font, eng_font)
 
     # 重複するグリフを削除する
     delete_duplicate_glyphs(jp_font, eng_font)
@@ -333,6 +337,7 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # オプション毎の修飾子を追加する
     variant = HALF_WIDTH_STR if options.get("half-width") else ""
+    variant += JPDOC_STR if options.get("jpdoc") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
     # variant += (
     #     INVISIBLE_ZENKAKU_SPACE_STR if options.get("invisible-zenkaku-space") else ""
@@ -392,20 +397,6 @@ def em_1000(font):
     font.em = em_size
 
 
-def delete_unwanted_glyphs(font):
-    """eng_font側のグリフを削除する。これにより合成時にjp_font側のグリフが優先される"""
-    # U+0000
-    clear_glyph_range(font, 0x0000, 0x0000)
-    # U+FF01-FF5D
-    clear_glyph_range(font, 0xFF01, 0xFF5D)
-    # U+FF62-FF63
-    clear_glyph_range(font, 0xFF62, 0xFF63)
-    # U+3001-3015
-    clear_glyph_range(font, 0x3001, 0x3015)
-    # U+FF0D
-    clear_glyph_range(font, 0xFF0D, 0xFF0D)
-
-
 def clear_glyph_range(font, start: int, end: int):
     """グリフを削除する"""
     for i in range(start, end + 1):
@@ -454,6 +445,85 @@ def slashed_zero(font):
     font.selection.select(("unicode", None), 0x0030)
     font.paste()
     font.selection.none()
+
+
+def remove_jpdoc_symbols(jp_font, eng_font):
+    """日本語文書に頻出する記号を削除する"""
+    eng_font.selection.none()
+    # § (U+00A7)
+    eng_font.selection.select(("more", "unicode"), 0x00A7)
+    # ± (U+00B1)
+    eng_font.selection.select(("more", "unicode"), 0x00B1)
+    # ¶ (U+00B6)
+    eng_font.selection.select(("more", "unicode"), 0x00B6)
+    # ÷ (U+00F7)
+    eng_font.selection.select(("more", "unicode"), 0x00F7)
+    # × (U+00D7)
+    eng_font.selection.select(("more", "unicode"), 0x00D7)
+    # ⇒ (U+21D2)
+    eng_font.selection.select(("more", "unicode"), 0x21D2)
+    # ⇔ (U+21D4)
+    eng_font.selection.select(("more", "unicode"), 0x21D4)
+    # ■-□ (U+25A0-U+25A1)
+    eng_font.selection.select(("more", "ranges"), 0x25A0, 0x25A1)
+    # ▲-△ (U+25B2-U+25B3)
+    eng_font.selection.select(("more", "ranges"), 0x25A0, 0x25B3)
+    # ▼-▽ (U+25BC-U+25BD)
+    eng_font.selection.select(("more", "ranges"), 0x25BC, 0x25BD)
+    # ◆-◇ (U+25C6-U+25C7)
+    eng_font.selection.select(("more", "ranges"), 0x25C6, 0x25C7)
+    # ○ (U+25CB)
+    eng_font.selection.select(("more", "unicode"), 0x25CB)
+    # ◎-● (U+25CE-U+25CF)
+    eng_font.selection.select(("more", "ranges"), 0x25CE, 0x25CF)
+    # ◥ (U+25E5)
+    eng_font.selection.select(("more", "unicode"), 0x25E5)
+    # ◯ (U+25EF)
+    eng_font.selection.select(("more", "unicode"), 0x25EF)
+    # √ (U+221A)
+    eng_font.selection.select(("more", "unicode"), 0x221A)
+    # ∞ (U+221E)
+    eng_font.selection.select(("more", "unicode"), 0x221E)
+    # ‐ (U+2010)
+    eng_font.selection.select(("more", "unicode"), 0x2010)
+    # ‘-‚ (U+2018-U+201A)
+    eng_font.selection.select(("more", "ranges"), 0x2018, 0x201A)
+    # “-„ (U+201C-U+201E)
+    eng_font.selection.select(("more", "ranges"), 0x201C, 0x201E)
+    # †-‡ (U+2020-U+2021)
+    eng_font.selection.select(("more", "ranges"), 0x2020, 0x2021)
+    # … (U+2026)
+    eng_font.selection.select(("more", "unicode"), 0x2026)
+    # ‰ (U+2030)
+    eng_font.selection.select(("more", "unicode"), 0x2030)
+    # ←-↓ (U+2190-U+2193)
+    eng_font.selection.select(("more", "ranges"), 0x2190, 0x2193)
+    # ∀ (U+2200)
+    eng_font.selection.select(("more", "unicode"), 0x2200)
+    # ∂-∃ (U+2202-U+2203)
+    eng_font.selection.select(("more", "ranges"), 0x2202, 0x2203)
+    # ∈ (U+2208)
+    eng_font.selection.select(("more", "unicode"), 0x2208)
+    # ∋ (U+220B)
+    eng_font.selection.select(("more", "unicode"), 0x220B)
+    # ∑ (U+2211)
+    eng_font.selection.select(("more", "unicode"), 0x2211)
+    # ∥ (U+2225)
+    eng_font.selection.select(("more", "unicode"), 0x2225)
+    # ∧-∬ (U+2227-U+222C)
+    eng_font.selection.select(("more", "ranges"), 0x2227, 0x222C)
+    # ≠-≡ (U+2260-U+2261)
+    eng_font.selection.select(("more", "ranges"), 0x2260, 0x2261)
+    # ⊂-⊃ (U+2282-U+2283)
+    eng_font.selection.select(("more", "ranges"), 0x2282, 0x2283)
+    # ⊆-⊇ (U+2286-U+2287)
+    eng_font.selection.select(("more", "ranges"), 0x2286, 0x2287)
+    # ─-╿ (Box Drawing) (U+2500-U+257F)
+    eng_font.selection.select(("more", "ranges"), 0x2500, 0x257F)
+    for glyph in eng_font.selection.byGlyphs:
+        jp_font.selection.select(("unicode", None), glyph.unicode)
+        if jp_font[glyph.unicode].isWorthOutputting():
+            glyph.clear()
 
 
 def width_600_or_1000(jp_font):
