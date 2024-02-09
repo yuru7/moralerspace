@@ -31,17 +31,13 @@ BUILD_FONTS_DIR = settings.get("DEFAULT", "BUILD_FONTS_DIR")
 VENDER_NAME = settings.get("DEFAULT", "VENDER_NAME")
 FONTFORGE_PREFIX = settings.get("DEFAULT", "FONTFORGE_PREFIX")
 IDEOGRAPHIC_SPACE = settings.get("DEFAULT", "IDEOGRAPHIC_SPACE")
-# HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
+HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
 # SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
 # INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
 EM_DESCENT = int(settings.get("DEFAULT", "EM_DESCENT"))
 HALF_WIDTH_12 = int(settings.get("DEFAULT", "HALF_WIDTH_12"))
 FULL_WIDTH_35 = int(settings.get("DEFAULT", "FULL_WIDTH_35"))
-ENG_GLYPH_SCALE_12 = float(settings.get("DEFAULT", "ENG_GLYPH_SCALE_12"))
-
-FONT_ASCENT = EM_ASCENT + 120
-FONT_DESCENT = EM_DESCENT + 250
 
 COPYRIGHT = """[Monaspace]
 Copyright (c) 2023, GitHub https://github.com/githubnext/monaspace
@@ -75,10 +71,10 @@ def main():
     os.mkdir(BUILD_FONTS_DIR)
 
     generate_neon()
-    generate_argon()
-    generate_xenon()
-    generate_radon()
-    generate_krypton()
+    # generate_argon()
+    # generate_xenon()
+    # generate_radon()
+    # generate_krypton()
 
 
 def generate_neon():
@@ -314,16 +310,16 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     if options.get("slashed-zero"):
         slashed_zero(eng_font)
 
+    # eng_fontを半角幅(600)にする
+    width_600(eng_font)
+
+    # jp_fontで半角幅(500)のグリフの幅を3:5になるよう調整する
+    width_600_or_1000(jp_font)
+
     # 3:5幅版との差分を調整する
     if options.get("half-width"):
         # 1:2 幅にする
         transform_half_width(jp_font, eng_font)
-    else:
-        # jp_fontで半角幅(500)のグリフの幅を3:5になるよう調整する
-        width_600_or_1000(jp_font)
-
-    # eng_fontを半角幅(600)にする
-    width_600(eng_font)
 
     # GSUBテーブルを削除する (ひらがな等の全角文字が含まれる行でリガチャが解除される対策)
     remove_lookups(jp_font)
@@ -335,13 +331,12 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # 合成する
     eng_font.mergeFonts(jp_font)
 
-    # TODO オプション毎の修飾子を追加する
-    # variant = HALF_WIDTH_STR if options.get("half-width") else ""
+    # オプション毎の修飾子を追加する
+    variant = HALF_WIDTH_STR if options.get("half-width") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
     # variant += (
     #     INVISIBLE_ZENKAKU_SPACE_STR if options.get("invisible-zenkaku-space") else ""
     # )
-    variant = ""
 
     # メタデータを編集する
     edit_meta_data(eng_font, merged_style, variant, suffix)
@@ -472,43 +467,37 @@ def width_600_or_1000(jp_font):
             # グリフ位置を調整してから幅を設定
             glyph.transform(psMat.translate((1000 - glyph.width) / 2, 0))
             glyph.width = 1000
+        # 600の場合はそのまま
 
 
 def width_600(eng_font):
-    """半角幅になるように変換する"""
+    """英語フォントを半角幅になるように変換する"""
+    before_width = eng_font[0x0030].width
+    x_scale = 600 / before_width
     for glyph in eng_font.glyphs():
-        if glyph.width == 620:
-            # グリフ位置を調整してから幅を設定
-            glyph.transform(psMat.translate((600 - glyph.width) / 2, 0))
+        if glyph.width > 0:
+            # 縮小してから幅を設定
+            glyph.transform(psMat.scale(x_scale, 1))
             glyph.width = 600
 
 
 def transform_half_width(jp_font, eng_font):
-    """1:2幅になるように変換する"""
-    for glyph in eng_font.selection.select(("unicode", None), 0x0030).byGlyphs:
-        before_width_eng = glyph.width
+    """1:2幅になるように変換する。日本語フォントは既に3:5幅になっていることを前提とする。"""
+    before_width_eng = eng_font[0x0030].width
     after_width_eng = HALF_WIDTH_12
+    x_scale = after_width_eng / before_width_eng
     for glyph in eng_font.glyphs():
-        if glyph.width == before_width_eng:
+        if glyph.width > 0:
             # 縮小
-            glyph.transform(psMat.scale(ENG_GLYPH_SCALE_12, 1))
-            # グリフ位置を調整してから幅を設定
-            glyph.transform(psMat.translate(-(glyph.width - after_width_eng) / 2, 0))
+            glyph.transform(psMat.scale(x_scale, 1))
+            # 幅を設定
             glyph.width = after_width_eng
 
-    for glyph in jp_font.selection.select(("unicode", None), 0x3042).byGlyphs:
-        before_half_width_jp = glyph.width / 2
-        before_full_width_jp = glyph.width
-    after_width_jp = HALF_WIDTH_12 * 2
     for glyph in jp_font.glyphs():
-        if glyph.width == before_half_width_jp:
+        if glyph.width == 600:
             # 英数字グリフと同じ幅にする
-            glyph.transform(psMat.translate(-(glyph.width - after_width_eng) / 2, 0))
+            glyph.transform(psMat.translate((after_width_eng - glyph.width) / 2, 0))
             glyph.width = after_width_eng
-        elif glyph.width == before_full_width_jp:
-            # グリフ位置を調整してから幅を設定
-            glyph.transform(psMat.translate(-(glyph.width - after_width_jp) / 2, 0))
-            glyph.width = after_width_jp
 
 
 def visualize_zenkaku_space(jp_font, eng_font):
@@ -534,10 +523,16 @@ def edit_meta_data(font, weight: str, variant: str, suffix: str):
     font.os2_typoascent = EM_ASCENT
     font.os2_typodescent = -EM_DESCENT
 
-    font.hhea_ascent = FONT_ASCENT
-    font.hhea_descent = -FONT_DESCENT
-    font.os2_winascent = FONT_ASCENT
-    font.os2_windescent = FONT_DESCENT
+    ascent_offset = 80
+    descent_offset = 160
+    if HALF_WIDTH_STR in variant:
+        ascent_offset = 60
+        descent_offset = 140
+
+    font.hhea_ascent = EM_ASCENT + ascent_offset
+    font.hhea_descent = -(EM_DESCENT + descent_offset)
+    font.os2_winascent = EM_ASCENT + ascent_offset
+    font.os2_windescent = EM_DESCENT + descent_offset
     font.hhea_linegap = 0
     font.os2_typolinegap = 0
 
