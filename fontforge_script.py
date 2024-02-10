@@ -295,6 +295,9 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
 
+    # アンダースコア2つで繋がっているように見えるため、離す
+    adjust_underscore(eng_font)
+
     # 日本語文書に頻出する記号を英語フォントから削除する
     if options.get("jpdoc"):
         remove_jpdoc_symbols(jp_font, eng_font)
@@ -381,6 +384,17 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
         return fontforge.open(
             f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf"
         ), fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+
+
+def adjust_underscore(eng_font):
+    """アンダースコア2つで繋がっているように見えるため、離す"""
+    underscore = eng_font[0x005F]
+    underscore_before_width = underscore.width
+    underscore.transform(psMat.scale(0.77, 1))
+    underscore.transform(
+        psMat.translate((underscore_before_width - underscore.width) / 2, 0)
+    )
+    underscore.width = underscore_before_width
 
 
 def make_italic_radon(jp_font):
@@ -576,15 +590,17 @@ def width_600(eng_font):
 
 
 def transform_half_width(jp_font, eng_font):
-    """1:2幅になるように変換する。日本語フォントは既に3:5幅になっていることを前提とする。"""
+    """1:2幅になるように変換する。既に3:5幅になっていることを前提とする。"""
     before_width_eng = eng_font[0x0030].width
     after_width_eng = HALF_WIDTH_12
-    x_scale = after_width_eng / before_width_eng
+    # グリフそのものは550幅相当で縮小し、最終的に HALF_WIDTH_12 の幅を設定する
+    x_scale = 550 / before_width_eng
     for glyph in eng_font.glyphs():
         if glyph.width > 0:
             # 縮小
             glyph.transform(psMat.scale(x_scale, 1))
             # 幅を設定
+            glyph.transform(psMat.translate((after_width_eng - glyph.width) / 2, 0))
             glyph.width = after_width_eng
 
     for glyph in jp_font.glyphs():
@@ -592,6 +608,10 @@ def transform_half_width(jp_font, eng_font):
             # 英数字グリフと同じ幅にする
             glyph.transform(psMat.translate((after_width_eng - glyph.width) / 2, 0))
             glyph.width = after_width_eng
+        elif glyph.width == 1000:
+            # 全角は after_width_eng の倍の幅にする
+            glyph.transform(psMat.translate((after_width_eng * 2 - glyph.width) / 2, 0))
+            glyph.width = after_width_eng * 2
 
 
 def visualize_zenkaku_space(jp_font, eng_font):
