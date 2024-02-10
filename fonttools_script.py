@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from fontTools import merge, ttLib, ttx
+from ttfautohint import options, ttfautohint
 
 # iniファイルを読み込む
 settings = configparser.ConfigParser()
@@ -58,13 +59,38 @@ def edit_fonts(suffix):
         variant = path.stem.split("-")[0].replace(
             f"{FONTFORGE_PREFIX}{FONT_NAME}{suffix}", ""
         )
+        add_hinting(str(path), str(path).replace(".ttf", "-hinted.ttf"))
         merge_fonts(suffix, style, variant)
         fix_font_tables(suffix, style, variant)
 
 
+def add_hinting(input_font_path, output_font_path):
+    """フォントにヒンティングを付ける"""
+    args = [
+        "-l",
+        "6",
+        "-r",
+        "45",
+        "-D",
+        "latn",
+        "-f",
+        "none",
+        "-S",
+        "-W",
+        "-X",
+        "13-",
+        "-I",
+        input_font_path,
+        output_font_path,
+    ]
+    options_ = options.parse_args(args)
+    print("exec hinting", options_)
+    ttfautohint(**options_)
+
+
 def merge_fonts(suffix, style, variant):
     """フォントを結合する"""
-    eng_font_path = f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{style}-eng.ttf"
+    eng_font_path = f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{style}-eng-hinted.ttf"
     jp_font_path = f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{style}-jp.ttf"
     # vhea, vmtxテーブルを削除
     jp_font_object = ttLib.TTFont(jp_font_path)
@@ -77,7 +103,7 @@ def merge_fonts(suffix, style, variant):
     merger = merge.Merger()
     merged_font = merger.merge([eng_font_path, jp_font_path])
     merged_font.save(
-        f"{BUILD_FONTS_DIR}/{FONTTOOLS_PREFIX}{FONT_NAME}{suffix}-{style}_merged.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTTOOLS_PREFIX}{FONT_NAME}{suffix}{variant}-{style}_merged.ttf"
     )
 
 

@@ -342,6 +342,7 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # メタデータを編集する
     edit_meta_data(eng_font, merged_style, variant, suffix)
+    edit_meta_data(jp_font, merged_style, variant, suffix)
 
     # ttfファイルに保存
     eng_font.generate(
@@ -428,19 +429,21 @@ def delete_duplicate_glyphs(jp_font, eng_font):
 
     # fonttools merge エラー対処
     # "Have non-identical duplicates to resolve for 'IBM Plex Sans JP Text' but no GSUB. Are duplicates intended?"
-    for glyph_name in [
-        "uni02CA",
-        "endash",
-        "uni0336",
-        "uni02BB",
-        "uni02BC",
-        "Euro",
-        "uni2113",
-        "uni21C4",
-        "uni21C6",
-    ]:
-        jp_font[glyph_name].altuni = None
-        jp_font[glyph_name].clear()
+    font_path = jp_font.path
+    if "IBMPlexSansJP" in font_path:
+        for glyph_name in [
+            "uni02CA",
+            "endash",
+            "uni0336",
+            "uni02BB",
+            "uni02BC",
+            "Euro",
+            "uni2113",
+            "uni21C4",
+            "uni21C6",
+        ]:
+            jp_font[glyph_name].altuni = None
+            jp_font[glyph_name].clear()
 
 
 def remove_lookups(font):
