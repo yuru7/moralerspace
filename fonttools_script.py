@@ -4,6 +4,7 @@ import configparser
 import glob
 import os
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import fontTools.ttx
 
@@ -26,30 +27,11 @@ FULL_WIDTH_35 = int(settings.get("DEFAULT", "FULL_WIDTH_35"))
 
 
 def main():
-    fix_font_tables(SUFFIX_NEON, "Regular")
-    fix_font_tables(SUFFIX_NEON, "Bold")
-    fix_font_tables(SUFFIX_NEON, "Italic")
-    fix_font_tables(SUFFIX_NEON, "BoldItalic")
-
-    fix_font_tables(SUFFIX_ARGON, "Regular")
-    fix_font_tables(SUFFIX_ARGON, "Bold")
-    fix_font_tables(SUFFIX_ARGON, "Italic")
-    fix_font_tables(SUFFIX_ARGON, "BoldItalic")
-
-    fix_font_tables(SUFFIX_XENON, "Regular")
-    fix_font_tables(SUFFIX_XENON, "Bold")
-    fix_font_tables(SUFFIX_XENON, "Italic")
-    fix_font_tables(SUFFIX_XENON, "BoldItalic")
-
-    fix_font_tables(SUFFIX_RADON, "Regular")
-    fix_font_tables(SUFFIX_RADON, "Bold")
-    fix_font_tables(SUFFIX_RADON, "Italic")
-    fix_font_tables(SUFFIX_RADON, "BoldItalic")
-
-    fix_font_tables(SUFFIX_KRYPTON, "Regular")
-    fix_font_tables(SUFFIX_KRYPTON, "Bold")
-    fix_font_tables(SUFFIX_KRYPTON, "Italic")
-    fix_font_tables(SUFFIX_KRYPTON, "BoldItalic")
+    fix_font_tables(SUFFIX_NEON)
+    fix_font_tables(SUFFIX_ARGON)
+    fix_font_tables(SUFFIX_XENON)
+    fix_font_tables(SUFFIX_RADON)
+    fix_font_tables(SUFFIX_KRYPTON)
 
     # 一時ファイルを削除
     # スタイル部分はワイルドカードで指定
@@ -59,64 +41,60 @@ def main():
         os.remove(filename)
 
 
-def fix_font_tables(suffix, style):
+def fix_font_tables(suffix):
     """フォントテーブルを編集する"""
 
     # ファイルをパターンで指定
-    filenames = glob.glob(
-        f"{BUILD_FONTS_DIR}/{INPUT_PREFIX}{FONT_NAME}{suffix}*-{style}.ttf"
-    )
+    filenames = glob.glob(f"{BUILD_FONTS_DIR}/{INPUT_PREFIX}{FONT_NAME}{suffix}*.ttf")
     # ファイルが見つからない or 複数見つかった場合はエラー
     if len(filenames) == 0:
-        print(f"Error: {INPUT_PREFIX}{FONT_NAME}{suffix}*-{style}.ttf not found")
+        print(f"Error: {INPUT_PREFIX}{FONT_NAME}{suffix}*.ttf not found")
         return
-    elif len(filenames) > 1:
-        print(f"Error: {INPUT_PREFIX}{FONT_NAME}{suffix}*-{style}.ttf is not unique")
-        return
-    filename = (
-        filenames[0]
-        .replace(f"{BUILD_FONTS_DIR}\\", "")
-        .replace(f"{BUILD_FONTS_DIR}/", "")
-    )
+    paths = [Path(f) for f in filenames]
 
-    # ファイル名から variant を取得
-    variant = filename.replace(f"{INPUT_PREFIX}{FONT_NAME}{suffix}", "").replace(
-        f"-{style}.ttf", ""
-    )
+    for path in paths:
+        style = path.stem.split("-")[-1]
+        variant = path.stem.split("-")[0].replace(
+            f"{INPUT_PREFIX}{FONT_NAME}{suffix}", ""
+        )
 
-    # OS/2, post テーブルのみのttxファイルを出力
-    xml = dump_ttx(style, suffix, variant)
-    # OS/2 テーブルを編集
-    fix_os2_table(xml, style, flag_hw=HALF_WIDTH_STR in variant)
-    # post テーブルを編集
-    fix_post_table(xml)
+        output_name_base = f"{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}"
+        input_name_base = f"{INPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}"
+        completed_name_base = f"{FONT_NAME}{suffix}{variant}-{style}"
 
-    # ttxファイルを上書き保存
-    xml.write(
-        f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttx",
-        encoding="utf-8",
-        xml_declaration=True,
-    )
+        # OS/2, post テーブルのみのttxファイルを出力
+        xml = dump_ttx(input_name_base, output_name_base)
+        # OS/2 テーブルを編集
+        fix_os2_table(xml, style, flag_hw=HALF_WIDTH_STR in variant)
+        # post テーブルを編集
+        fix_post_table(xml)
 
-    # ttxファイルをttfファイルに適用
-    fontTools.ttx.main(
-        [
-            "-o",
-            f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}_os2_post.ttf",
-            "-m",
-            f"{BUILD_FONTS_DIR}/{INPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttf",
+        # ttxファイルを上書き保存
+        xml.write(
             f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttx",
-        ]
-    )
+            encoding="utf-8",
+            xml_declaration=True,
+        )
 
-    # ファイル名を変更
-    os.rename(
-        f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}_os2_post.ttf",
-        f"{BUILD_FONTS_DIR}/{FONT_NAME}{suffix}{variant}-{style}.ttf",
-    )
+        # ttxファイルをttfファイルに適用
+        fontTools.ttx.main(
+            [
+                "-o",
+                f"{BUILD_FONTS_DIR}/{output_name_base}_os2_post.ttf",
+                "-m",
+                f"{BUILD_FONTS_DIR}/{input_name_base}.ttf",
+                f"{BUILD_FONTS_DIR}/{output_name_base}.ttx",
+            ]
+        )
+
+        # ファイル名を変更
+        os.rename(
+            f"{BUILD_FONTS_DIR}/{output_name_base}_os2_post.ttf",
+            f"{BUILD_FONTS_DIR}/{completed_name_base}.ttf",
+        )
 
 
-def dump_ttx(style: str, suffix: str, variant: str) -> ET:
+def dump_ttx(input_name_base, output_name_base) -> ET:
     """OS/2, post テーブルのみのttxファイルを出力"""
     fontTools.ttx.main(
         [
@@ -126,14 +104,12 @@ def dump_ttx(style: str, suffix: str, variant: str) -> ET:
             "post",
             "-f",
             "-o",
-            f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttx",
-            f"{BUILD_FONTS_DIR}/{INPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttf",
+            f"{BUILD_FONTS_DIR}/{output_name_base}.ttx",
+            f"{BUILD_FONTS_DIR}/{input_name_base}.ttf",
         ]
     )
 
-    return ET.parse(
-        f"{BUILD_FONTS_DIR}/{OUTPUT_PREFIX}{FONT_NAME}{suffix}{variant}-{style}.ttx"
-    )
+    return ET.parse(f"{BUILD_FONTS_DIR}/{output_name_base}.ttx")
 
 
 def fix_os2_table(xml: ET, style: str, flag_hw: bool = False):
