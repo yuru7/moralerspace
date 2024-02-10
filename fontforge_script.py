@@ -72,10 +72,10 @@ def main():
     os.mkdir(BUILD_FONTS_DIR)
 
     generate_neon()
-    # generate_argon()
-    # generate_xenon()
-    # generate_radon()
-    # generate_krypton()
+    generate_argon()
+    generate_xenon()
+    generate_radon()
+    generate_krypton()
 
 
 def generate_neon():
@@ -332,9 +332,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     if not options.get("invisible-zenkaku-space"):
         visualize_zenkaku_space(jp_font, eng_font)
 
-    # 合成する
-    eng_font.mergeFonts(jp_font)
-
     # オプション毎の修飾子を追加する
     variant = HALF_WIDTH_STR if options.get("half-width") else ""
     variant += JPDOC_STR if options.get("jpdoc") else ""
@@ -348,7 +345,10 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # ttfファイルに保存
     eng_font.generate(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf"
+    )
+    jp_font.generate(
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-jp.ttf"
     )
 
     # ttfを閉じる
@@ -407,6 +407,10 @@ def clear_glyph_range(font, start: int, end: int):
 
 def delete_duplicate_glyphs(jp_font, eng_font):
     """jp_fontとeng_fontのグリフを比較し、重複するグリフを削除する"""
+
+    eng_font.selection.none()
+    jp_font.selection.none()
+
     try:
         for glyph in jp_font.glyphs():
             if glyph.unicode > 0:
@@ -418,8 +422,25 @@ def delete_duplicate_glyphs(jp_font, eng_font):
             jp_font.selection.select(("more", "unicode"), glyph.unicode)
     for glyph in jp_font.selection.byGlyphs:
         glyph.clear()
+
     jp_font.selection.none()
     eng_font.selection.none()
+
+    # fonttools merge エラー対処
+    # "Have non-identical duplicates to resolve for 'IBM Plex Sans JP Text' but no GSUB. Are duplicates intended?"
+    for glyph_name in [
+        "uni02CA",
+        "endash",
+        "uni0336",
+        "uni02BB",
+        "uni02BC",
+        "Euro",
+        "uni2113",
+        "uni21C4",
+        "uni21C6",
+    ]:
+        jp_font[glyph_name].altuni = None
+        jp_font[glyph_name].clear()
 
 
 def remove_lookups(font):
