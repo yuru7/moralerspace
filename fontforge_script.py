@@ -25,6 +25,7 @@ SUFFIX_KRYPTON = settings.get("DEFAULT", "SUFFIX_KRYPTON")
 JP_FONT = settings.get("DEFAULT", "JP_FONT")
 JP_FONT_RADON = settings.get("DEFAULT", "JP_FONT_RADON")
 JP_FONT_KRYPTON = settings.get("DEFAULT", "JP_FONT_KRYPTON")
+JP_FONT_BIZUD = settings.get("DEFAULT", "JP_FONT_BIZUD")
 ENG_FONT = settings.get("DEFAULT", "ENG_FONT")
 SOURCE_FONTS_DIR = settings.get("DEFAULT", "SOURCE_FONTS_DIR")
 BUILD_FONTS_DIR = settings.get("DEFAULT", "BUILD_FONTS_DIR")
@@ -32,7 +33,7 @@ VENDER_NAME = settings.get("DEFAULT", "VENDER_NAME")
 FONTFORGE_PREFIX = settings.get("DEFAULT", "FONTFORGE_PREFIX")
 IDEOGRAPHIC_SPACE = settings.get("DEFAULT", "IDEOGRAPHIC_SPACE")
 HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
-INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
+# INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 JPDOC_STR = settings.get("DEFAULT", "JPDOC_STR")
 # SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
@@ -112,6 +113,43 @@ def generate_neon():
         italic=True,
     )
 
+    """日本語フォントをBIZ UDにする"""
+    # Regular スタイルを生成する
+    generate_font(
+        jp_style="Regular",
+        eng_style="Regular",
+        merged_style="Regular",
+        suffix=SUFFIX_NEON,
+        jp_font_base=JP_FONT_BIZUD
+    )
+    # Bold スタイルを生成する
+    generate_font(
+        jp_style="Bold",
+        eng_style="Bold",
+        merged_style="Bold",
+        suffix=SUFFIX_NEON,
+        jp_font_base=JP_FONT_BIZUD
+    )
+
+    # Regular Italic スタイルを生成する
+    generate_font(
+        jp_style="Regular",
+        eng_style="Italic",
+        merged_style="Italic",
+        suffix=SUFFIX_NEON,
+        italic=True,
+        jp_font_base=JP_FONT_BIZUD
+    )
+    # Bold Italic スタイルを生成する
+    generate_font(
+        jp_style="Bold",
+        eng_style="BoldItalic",
+        merged_style="BoldItalic",
+        suffix=SUFFIX_NEON,
+        italic=True,
+        jp_font_base=JP_FONT_BIZUD
+    )
+
 
 def generate_argon():
     """Argon系統を生成する"""
@@ -147,6 +185,42 @@ def generate_argon():
         italic=True,
     )
 
+    """BIZUDベースを生成する"""
+    # Regular スタイルを生成する
+    generate_font(
+        jp_style="Regular",
+        eng_style="Regular",
+        merged_style="Regular",
+        suffix=SUFFIX_ARGON,
+        jp_font_base=JP_FONT_BIZUD
+    )
+    # Bold スタイルを生成する
+    generate_font(
+        jp_style="Bold",
+        eng_style="Bold",
+        merged_style="Bold",
+        suffix=SUFFIX_ARGON,
+        jp_font_base=JP_FONT_BIZUD
+    )
+
+    # Regular Italic スタイルを生成する
+    generate_font(
+        jp_style="Regular",
+        eng_style="Italic",
+        merged_style="Italic",
+        suffix=SUFFIX_ARGON,
+        italic=True,
+        jp_font_base=JP_FONT_BIZUD
+    )
+    # Bold Italic スタイルを生成する
+    generate_font(
+        jp_style="Bold",
+        eng_style="BoldItalic",
+        merged_style="BoldItalic",
+        suffix=SUFFIX_ARGON,
+        italic=True,
+        jp_font_base=JP_FONT_BIZUD
+    )
 
 def generate_xenon():
     """Xenon系統を生成する"""
@@ -191,6 +265,7 @@ def generate_radon():
         eng_style="Regular",
         merged_style="Regular",
         suffix=SUFFIX_RADON,
+        jp_font_base=JP_FONT_RADON
     )
     # Bold スタイルを生成する
     generate_font(
@@ -198,6 +273,7 @@ def generate_radon():
         eng_style="Bold",
         merged_style="Bold",
         suffix=SUFFIX_RADON,
+        jp_font_base=JP_FONT_RADON
     )
 
     # Regular Italic スタイルを生成する
@@ -207,6 +283,7 @@ def generate_radon():
         merged_style="Italic",
         suffix=SUFFIX_RADON,
         italic=True,
+        jp_font_base=JP_FONT_RADON
     )
     # Bold Italic スタイルを生成する
     # generate_font(
@@ -216,6 +293,7 @@ def generate_radon():
         merged_style="BoldItalic",
         suffix=SUFFIX_RADON,
         italic=True,
+        jp_font_base=JP_FONT_RADON
     )
 
 
@@ -227,6 +305,7 @@ def generate_krypton():
         eng_style="Regular",
         merged_style="Regular",
         suffix=SUFFIX_KRYPTON,
+        jp_font_base=JP_FONT_KRYPTON
     )
     # Bold スタイルを生成する
     generate_font(
@@ -234,6 +313,7 @@ def generate_krypton():
         eng_style="Bold",
         merged_style="Bold",
         suffix=SUFFIX_KRYPTON,
+        jp_font_base=JP_FONT_KRYPTON
     )
 
     # Regular Italic スタイルを生成する
@@ -243,6 +323,7 @@ def generate_krypton():
         merged_style="Italic",
         suffix=SUFFIX_KRYPTON,
         italic=True,
+        jp_font_base=JP_FONT_KRYPTON
     )
     # Bold Italic スタイルを生成する
     generate_font(
@@ -251,6 +332,7 @@ def generate_krypton():
         merged_style="BoldItalic",
         suffix=SUFFIX_KRYPTON,
         italic=True,
+        jp_font_base=JP_FONT_KRYPTON
     )
 
 
@@ -285,17 +367,17 @@ def get_options():
             return
 
 
-def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
+def generate_font(jp_style, eng_style, merged_style, suffix, italic=False, jp_font_base=JP_FONT):
     print(f"=== Generate {suffix} {merged_style} ===")
 
     # 合成するフォントを開く
-    jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
+    jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", jp_font_base, suffix)
 
     # fonttools merge エラー対処
     jp_font = fonttools_merge_error_workaround(jp_font)
 
     # フォントのEMを1000に変換する
-    # jp_font は既に1000なので eng_font のみ変換する
+    em_1000(jp_font)
     em_1000(eng_font)
 
     # いくつかのグリフ形状に調整を加える
@@ -346,16 +428,19 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     variant += JPDOC_STR if options.get("jpdoc") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
 
+    # base fontがBIZUDのときだけ情報を入れる
+    jp_base = "BIZUD" if jp_font_base == JP_FONT_BIZUD else ""
+
     # メタデータを編集する
-    edit_meta_data(eng_font, merged_style, variant, suffix)
-    edit_meta_data(jp_font, merged_style, variant, suffix)
+    edit_meta_data(eng_font, merged_style, variant, suffix, jp_base)
+    edit_meta_data(jp_font, merged_style, variant, suffix, jp_base)
 
     # ttfファイルに保存
     eng_font.generate(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{jp_base}{variant}-{merged_style}-eng.ttf"
     )
     jp_font.generate(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-jp.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{jp_base}{variant}-{merged_style}-jp.ttf"
     )
 
     # ttfを閉じる
@@ -363,27 +448,23 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     eng_font.close()
 
 
-def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
+def open_fonts(jp_style: str, eng_style: str, jp_font_base: str, suffix: str = ""):
     """フォントを開く"""
+    jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{jp_font_base}{jp_style}.ttf")
+    eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+
     if suffix == SUFFIX_RADON:
-        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_RADON}{jp_style}.ttf")
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Medium":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
         elif jp_style == "Bold":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
     elif suffix == SUFFIX_KRYPTON:
-        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_KRYPTON}{jp_style}.ttf")
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Regular":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
         elif jp_style == "Bold":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
-    else:
-        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf")
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
 
     # フォント参照を解除する
     jp_font.unlinkReferences()
@@ -671,7 +752,7 @@ def visualize_zenkaku_space(jp_font, eng_font):
     eng_font.selection.none()
 
 
-def edit_meta_data(font, weight: str, variant: str, suffix: str):
+def edit_meta_data(font, weight: str, variant: str, suffix: str, jp_base: str):
     """フォント内のメタデータを編集する"""
     font.ascent = EM_ASCENT
     font.descent = EM_DESCENT
@@ -707,9 +788,10 @@ at: http://scripts.sil.org/OFL""",
         ("English (US)", "License URL", "http://scripts.sil.org/OFL"),
         ("English (US)", "Version", VERSION),
     )
-    font.familyname = f"{FONT_NAME} {suffix} {variant}".strip()
-    font.fontname = f"{FONT_NAME}{suffix}{variant}-{weight}"
-    font.fullname = f"{FONT_NAME} {suffix} {variant}".strip() + f" {weight}"
+    # jp_baseは空文字のことがあるので後ろのスペースを詰める
+    font.familyname = f"{FONT_NAME} {suffix} {jp_base}{variant}".strip()
+    font.fontname = f"{FONT_NAME}{suffix}{jp_base}{variant}-{weight}"
+    font.fullname = f"{FONT_NAME} {suffix} {jp_base}{variant}".strip() + f" {weight}"
     font.os2_vendor = VENDER_NAME
     font.copyright = COPYRIGHT
 
