@@ -32,9 +32,9 @@ VENDER_NAME = settings.get("DEFAULT", "VENDER_NAME")
 FONTFORGE_PREFIX = settings.get("DEFAULT", "FONTFORGE_PREFIX")
 IDEOGRAPHIC_SPACE = settings.get("DEFAULT", "IDEOGRAPHIC_SPACE")
 HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
+INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 JPDOC_STR = settings.get("DEFAULT", "JPDOC_STR")
 # SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
-# INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
 EM_DESCENT = int(settings.get("DEFAULT", "EM_DESCENT"))
 HALF_WIDTH_12 = int(settings.get("DEFAULT", "HALF_WIDTH_12"))
@@ -291,12 +291,15 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # 合成するフォントを開く
     jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
 
+    # fonttools merge エラー対処
+    jp_font = fonttools_merge_error_workaround(jp_font)
+
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
 
-    # アンダースコア2つで繋がっているように見えるため、離す
-    adjust_underscore(eng_font)
+    # いくつかのグリフ形状に調整を加える
+    adjust_some_glyph(jp_font, eng_font)
 
     # 日本語文書に頻出する記号を英語フォントから削除する
     if options.get("jpdoc"):
@@ -337,11 +340,11 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # オプション毎の修飾子を追加する
     variant = HALF_WIDTH_STR if options.get("half-width") else ""
+    variant += (
+        INVISIBLE_ZENKAKU_SPACE_STR if options.get("invisible-zenkaku-space") else ""
+    )
     variant += JPDOC_STR if options.get("jpdoc") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
-    # variant += (
-    #     INVISIBLE_ZENKAKU_SPACE_STR if options.get("invisible-zenkaku-space") else ""
-    # )
 
     # メタデータを編集する
     edit_meta_data(eng_font, merged_style, variant, suffix)
@@ -370,7 +373,6 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
         elif jp_style == "Bold":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
-        return jp_font, eng_font
     elif suffix == SUFFIX_KRYPTON:
         jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_KRYPTON}{jp_style}.ttf")
         eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
@@ -379,15 +381,54 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
         elif jp_style == "Bold":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
-        return jp_font, eng_font
     else:
+        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf")
+        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+
+    # フォント参照を解除する
+    jp_font.unlinkReferences()
+    eng_font.unlinkReferences()
+
+    return jp_font, eng_font
+
+
+def fonttools_merge_error_workaround(jp_font):
+    # fonttools merge エラー対処
+    # "Have non-identical duplicates to resolve for 'IBM Plex Sans JP Text' but no GSUB. Are duplicates intended?"
+    font_path = jp_font.path
+    if "IBMPlexSansJP" in font_path:
+        for glyph_name in [
+            "uni02CA",
+            "endash",
+            "uni0336",
+        ]:
+            # Alternate Unicodeになっているグリフをコピーする
+            glyph = jp_font[glyph_name]
+            encoding = glyph.encoding
+            altuni = glyph.altuni
+            if altuni is not None:
+                glyph.altuni = None
+                copy_target_glyph = jp_font.createChar(encoding)
+                copy_target_glyph.clear()
+                copy_target_glyph.width = glyph.width
+                copy_target_glyph.addReference(glyph.glyphname)
+            # グリフを削除する
+            jp_font.removeGlyph(glyph_name)
+        # エンコーディングを整理するため、開き直す
+        jp_font.generate(
+            f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}_temp_jp_font.ttf"
+        )
+        jp_font.close()
         return fontforge.open(
-            f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf"
-        ), fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+            f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}_temp_jp_font.ttf"
+        )
+    else:
+        return jp_font
 
 
-def adjust_underscore(eng_font):
-    """アンダースコア2つで繋がっているように見えるため、離す"""
+def adjust_some_glyph(jp_font, eng_font):
+    """いくつかのグリフ形状に調整を加える"""
+    # アンダースコアが隣接すると繋がっているように見えるため短くする
     underscore = eng_font[0x005F]
     underscore_before_width = underscore.width
     underscore.transform(psMat.scale(0.77, 1))
@@ -395,6 +436,23 @@ def adjust_underscore(eng_font):
         psMat.translate((underscore_before_width - underscore.width) / 2, 0)
     )
     underscore.width = underscore_before_width
+    # 全角括弧の開きを広くする
+    full_width = jp_font[0x3042].width
+    for glyph_name in [0xFF08, 0xFF3B, 0xFF5B]:
+        glyph = jp_font[glyph_name]
+        glyph.transform(psMat.translate(-180, 0))
+        glyph.width = full_width
+    for glyph_name in [0xFF09, 0xFF3D, 0xFF5D]:
+        glyph = jp_font[glyph_name]
+        glyph.transform(psMat.translate(180, 0))
+        glyph.width = full_width
+    # LEFT SINGLE QUOTATION MARK (U+2018) ～ DOUBLE LOW-9 QUOTATION MARK (U+201E) の幅を全角幅にする
+    for glyph in jp_font.selection.select(
+        ("ranges", "unicode"), 0x2018, 0x201E
+    ).byGlyphs:
+        glyph.transform(psMat.translate((full_width - glyph.width) / 2, 0))
+        glyph.width = full_width
+    jp_font.selection.none()
 
 
 def make_italic_radon(jp_font):
@@ -426,38 +484,21 @@ def delete_duplicate_glyphs(jp_font, eng_font):
     eng_font.selection.none()
     jp_font.selection.none()
 
-    try:
-        for glyph in jp_font.glyphs():
-            if glyph.unicode > 0:
+    for glyph in jp_font.glyphs():
+        try:
+            if glyph.isWorthOutputting() and glyph.unicode > 0:
                 eng_font.selection.select(("more", "unicode"), glyph.unicode)
-    except ValueError:
-        pass
+        except ValueError:
+            # Encoding is out of range のときは継続する
+            continue
     for glyph in eng_font.selection.byGlyphs:
-        if glyph.isWorthOutputting():
-            jp_font.selection.select(("more", "unicode"), glyph.unicode)
+        # if glyph.isWorthOutputting():
+        jp_font.selection.select(("more", "unicode"), glyph.unicode)
     for glyph in jp_font.selection.byGlyphs:
         glyph.clear()
 
     jp_font.selection.none()
     eng_font.selection.none()
-
-    # fonttools merge エラー対処
-    # "Have non-identical duplicates to resolve for 'IBM Plex Sans JP Text' but no GSUB. Are duplicates intended?"
-    font_path = jp_font.path
-    if "IBMPlexSansJP" in font_path:
-        for glyph_name in [
-            "uni02CA",
-            "endash",
-            "uni0336",
-            "uni02BB",
-            "uni02BC",
-            "Euro",
-            "uni2113",
-            "uni21C4",
-            "uni21C6",
-        ]:
-            jp_font[glyph_name].altuni = None
-            jp_font[glyph_name].clear()
 
 
 def remove_lookups(font):
@@ -559,9 +600,9 @@ def remove_jpdoc_symbols(jp_font, eng_font):
     # ─-╿ (Box Drawing) (U+2500-U+257F)
     eng_font.selection.select(("more", "ranges"), 0x2500, 0x257F)
     for glyph in eng_font.selection.byGlyphs:
-        jp_font.selection.select(("unicode", None), glyph.unicode)
-        if jp_font[glyph.unicode].isWorthOutputting():
+        if glyph.isWorthOutputting():
             glyph.clear()
+    eng_font.selection.none()
 
 
 def width_600_or_1000(jp_font):
