@@ -69,9 +69,11 @@ def main():
         return
 
     # buildディレクトリを作成する
-    if os.path.exists(BUILD_FONTS_DIR):
+    if os.path.exists(BUILD_FONTS_DIR) and not options.get("do-not-delete-build-dir"):
         shutil.rmtree(BUILD_FONTS_DIR)
-    os.mkdir(BUILD_FONTS_DIR)
+        os.mkdir(BUILD_FONTS_DIR)
+    if not os.path.exists(BUILD_FONTS_DIR):
+        os.mkdir(BUILD_FONTS_DIR)
 
     generate_neon()
     generate_argon()
@@ -259,7 +261,7 @@ def generate_krypton():
 def usage():
     print(
         f"Usage: {sys.argv[0]} "
-        "[--slashed-zero] [--invisible-zenkaku-space] [--half-width]"
+        "[--invisible-zenkaku-space] [--half-width] [--jpdoc] [--nerd-font]"
     )
 
 
@@ -274,7 +276,9 @@ def get_options():
 
     for arg in sys.argv[1:]:
         # オプション判定
-        if arg == "--slashed-zero":
+        if arg == "--do-not-delete-build-dir":
+            options["do-not-delete-build-dir"] = True
+        elif arg == "--slashed-zero":
             options["slashed-zero"] = True
         elif arg == "--invisible-zenkaku-space":
             options["invisible-zenkaku-space"] = True
@@ -296,7 +300,14 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
 
     # fonttools merge エラー対処
-    jp_font = fonttools_merge_error_workaround(jp_font)
+    altuni_to_entity(jp_font)
+
+    # 重複するグリフを削除する
+    delete_duplicate_glyphs(jp_font, eng_font)
+
+    # 日本語文書に頻出する記号を英語フォントから削除する
+    if options.get("jpdoc"):
+        remove_jpdoc_symbols(jp_font, eng_font)
 
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
@@ -304,13 +315,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # いくつかのグリフ形状に調整を加える
     adjust_some_glyph(jp_font, eng_font)
-
-    # 日本語文書に頻出する記号を英語フォントから削除する
-    if options.get("jpdoc"):
-        remove_jpdoc_symbols(jp_font, eng_font)
-
-    # 重複するグリフを削除する
-    delete_duplicate_glyphs(jp_font, eng_font)
 
     # Radonの場合は日本語フォントを少し斜めにする
     if suffix == SUFFIX_RADON:
@@ -435,6 +439,41 @@ def fonttools_merge_error_workaround(jp_font):
         return jp_font
 
 
+def altuni_to_entity(jp_font):
+    """Alternate Unicodeで透過的に参照して表示している箇所を実体のあるグリフに変換する"""
+    for glyph in jp_font.glyphs():
+        if glyph.altuni is not None:
+            # 以下形式のタプルで返ってくる
+            # (unicode-value, variation-selector, reserved-field)
+            # 第3フィールドは常に0なので無視
+            altunis = glyph.altuni
+
+            # variation-selectorがなく (-1)、透過的にグリフを参照しているものは実体のグリフに変換する
+            before_altuni = ""
+            for altuni in altunis:
+                # 直前のaltuniと同じ場合はスキップ
+                if altuni[1] == -1 and before_altuni != ",".join(map(str, altuni)):
+                    glyph.altuni = None
+                    copy_target_unicode = altuni[0]
+                    try:
+                        copy_target_glyph = jp_font.createChar(
+                            copy_target_unicode,
+                            f"uni{hex(copy_target_unicode).replace('0x', '').upper()}",
+                        )
+                    except Exception:
+                        copy_target_glyph = jp_font[copy_target_unicode]
+                    copy_target_glyph.clear()
+                    copy_target_glyph.width = glyph.width
+                    # copy_target_glyph.addReference(glyph.glyphname)
+                    jp_font.selection.select(glyph.glyphname)
+                    jp_font.copy()
+                    jp_font.selection.select(copy_target_glyph.glyphname)
+                    jp_font.paste()
+                before_altuni = ",".join(map(str, altuni))
+
+    return jp_font
+
+
 def adjust_some_glyph(jp_font, eng_font):
     """いくつかのグリフ形状に調整を加える"""
     # アンダースコアが隣接すると繋がっているように見えるため短くする
@@ -485,7 +524,7 @@ def delete_duplicate_glyphs(jp_font, eng_font):
     eng_font.selection.none()
     jp_font.selection.none()
 
-    for glyph in jp_font.glyphs():
+    for glyph in jp_font.glyphs("encoding"):
         try:
             if glyph.isWorthOutputting() and glyph.unicode > 0:
                 eng_font.selection.select(("more", "unicode"), glyph.unicode)
@@ -713,17 +752,18 @@ def add_nerd_font_glyphs(jp_font, eng_font):
                         psMat.translate((half_width - nerd_glyph.width) / 2, 0)
                     )
                 nerd_glyph.width = half_width
-            # 日本語フォントにマージするため、既に存在する場合は削除する
-            if nerd_glyph.unicode != -1:
-                # 既に存在する場合は削除する
-                try:
-                    jp_font[nerd_glyph.unicode].clear()
-                except Exception:
-                    pass
-                try:
-                    eng_font[nerd_glyph.unicode].clear()
-                except Exception:
-                    pass
+    # 日本語フォントにマージするため、既に存在する場合は削除する
+    for nerd_glyph in nerd_font.glyphs():
+        if nerd_glyph.unicode != -1:
+            # 既に存在する場合は削除する
+            try:
+                jp_font[nerd_glyph.unicode].clear()
+            except Exception:
+                pass
+            try:
+                eng_font[nerd_glyph.unicode].clear()
+            except Exception:
+                pass
     jp_font.mergeFonts(nerd_font)
 
 

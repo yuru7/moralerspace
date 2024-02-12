@@ -6,23 +6,71 @@ $version = ($ini | Select-String -Pattern "VERSION").ToString().Split("=")[1].Tr
 Set-Location -Path $PSScriptRoot
 # 各ファイルを置くフォルダを作成
 New-Item -ItemType Directory -Force -Path ".\release_files\"
+# ビルドフォルダを削除
+Remove-Item -Path .\build -Recurse -Force
 
-# ビルド 通常版
-& "C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe" --lang=py -script .\fontforge_script.py `
-    && python fonttools_script.py `
-    && Move-Item -Path .\build -Destination ".\release_files\Moralerspace_$version" -Force
+$option_and_output_folder = @(
+    "--do-not-delete-build-dir", # ビルド 通常版
+    "--do-not-delete-build-dir --half-width", # ビルド 1:2幅版
+    "--do-not-delete-build-dir --jpdoc", # ビルド JPDOC版
+    "--do-not-delete-build-dir --half-width --jpdoc", # ビルド 1:2幅 JPDOC版
+    "--do-not-delete-build-dir --nerd-font", # ビルド 通常版 + Nerd Fonts
+    "--do-not-delete-build-dir --half-width --nerd-font" # ビルド 1:2幅版 + Nerd Fonts
+)
 
-# ビルド 1:2幅版
-& "C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe" --lang=py -script .\fontforge_script.py --half-width `
-    && python fonttools_script.py `
-    && Move-Item -Path .\build -Destination ".\release_files\MoralerspaceHW_$version" -Force
+$option_and_output_folder | Foreach-Object -ThrottleLimit 4 -Parallel {
+    Write-Host "fontforge script option: `"$($_)`""
+    Invoke-Expression "& `"C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe`" --lang=py -script .\fontforge_script.py $($_)"
+}
 
-# ビルド JPDOC版
-& "C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe" --lang=py -script .\fontforge_script.py --jpdoc `
-    && python fonttools_script.py `
-    && Move-Item -Path .\build -Destination ".\release_files\MoralerspaceJPDOC_$version" -Force
+python fonttools_script.py
 
-# ビルド 1:2幅JPDOC版
-& "C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe" --lang=py -script .\fontforge_script.py --half-width --jpdoc `
-    && python fonttools_script.py `
-    && Move-Item -Path .\build -Destination ".\release_files\MoralerspaceHWJPDOC_$version" -Force
+$move_file_src_dest = @(
+    @("MoralerspaceNeon-*.ttf", "Moralerspace_$version"),
+    @("MoralerspaceArgon-*.ttf", "Moralerspace_$version"),
+    @("MoralerspaceXenon-*.ttf", "Moralerspace_$version"),
+    @("MoralerspaceRadon-*.ttf", "Moralerspace_$version"),
+    @("MoralerspaceKrypton-*.ttf", "Moralerspace_$version"),
+
+    @("MoralerspaceNeonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceArgonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceXenonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceRadonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceKryptonHW-*.ttf", "MoralerspaceHW_$version"),
+
+    @("MoralerspaceNeonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceArgonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceXenonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceRadonHW-*.ttf", "MoralerspaceHW_$version"),
+    @("MoralerspaceKryptonHW-*.ttf", "MoralerspaceHW_$version"),
+
+    @("MoralerspaceNeonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
+    @("MoralerspaceArgonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
+    @("MoralerspaceXenonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
+    @("MoralerspaceRadonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
+    @("MoralerspaceKryptonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
+
+    @("MoralerspaceNeonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
+    @("MoralerspaceArgonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
+    @("MoralerspaceXenonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
+    @("MoralerspaceRadonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
+    @("MoralerspaceKryptonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
+
+    @("MoralerspaceNeonNF-*.ttf", "MoralerspaceNF_$version"),
+    @("MoralerspaceArgonNF-*.ttf", "MoralerspaceNF_$version"),
+    @("MoralerspaceXenonNF-*.ttf", "MoralerspaceNF_$version"),
+    @("MoralerspaceRadonNF-*.ttf", "MoralerspaceNF_$version"),
+    @("MoralerspaceKryptonNF-*.ttf", "MoralerspaceNF_$version"),
+
+    @("MoralerspaceNeonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
+    @("MoralerspaceArgonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
+    @("MoralerspaceXenonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
+    @("MoralerspaceRadonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
+    @("MoralerspaceKryptonHWNF-*.ttf", "MoralerspaceHWNF_$version")
+)
+
+$move_file_src_dest | Foreach-Object -ThrottleLimit 4 -Parallel {
+    $folder_path = ".\release_files\$($_[1])"
+    New-Item -ItemType Directory -Force -Path $folder_path
+    Move-Item -Path ".\build\$($_[0])" -Destination $folder_path -Force
+}
