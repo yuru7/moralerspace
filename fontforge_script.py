@@ -458,7 +458,7 @@ def altuni_to_entity(jp_font):
                     try:
                         copy_target_glyph = jp_font.createChar(
                             copy_target_unicode,
-                            f"uni{hex(copy_target_unicode).replace('0x', '').upper()}",
+                            f"uni{hex(copy_target_unicode).replace('0x', '').upper()}copy",
                         )
                     except Exception:
                         copy_target_glyph = jp_font[copy_target_unicode]
@@ -661,13 +661,23 @@ def width_600_or_1000(jp_font):
 
 def width_600(eng_font):
     """英語フォントを半角幅になるように変換する"""
-    before_width = eng_font[0x0030].width
-    x_scale = 600 / before_width
+    mona_original_half_width = eng_font[0x0030].width
+    after_width = 600
+    x_scale = after_width / mona_original_half_width
     for glyph in eng_font.glyphs():
-        if glyph.width > 0:
-            # 縮小してから幅を設定
+        if 0 < glyph.width < after_width:
+            # after_width より幅が狭い場合は位置合わせしてから幅を設定
+            glyph.transform(psMat.translate((after_width - glyph.width) / 2, 0))
+            glyph.width = after_width
+        elif after_width < glyph.width <= mona_original_half_width:
+            # after_width より幅が広い、かつ元の半角幅より狭い場合は縮小してから幅を設定
             glyph.transform(psMat.scale(x_scale, 1))
-            glyph.width = 600
+            glyph.width = after_width
+        elif mona_original_half_width < glyph.width:
+            # after_width より幅が広い (おそらく全てリガチャ) の場合は600の倍数にする
+            multiply_number = round(glyph.width / mona_original_half_width)
+            glyph.transform(psMat.scale(x_scale, 1))
+            glyph.width = after_width * multiply_number
 
 
 def transform_half_width(jp_font, eng_font):
@@ -678,11 +688,15 @@ def transform_half_width(jp_font, eng_font):
     x_scale = 550 / before_width_eng
     for glyph in eng_font.glyphs():
         if glyph.width > 0:
+            # リガチャ考慮
+            after_width_eng_multiply = after_width_eng * round(glyph.width / 600)
             # 縮小
             glyph.transform(psMat.scale(x_scale, 1))
             # 幅を設定
-            glyph.transform(psMat.translate((after_width_eng - glyph.width) / 2, 0))
-            glyph.width = after_width_eng
+            glyph.transform(
+                psMat.translate((after_width_eng_multiply - glyph.width) / 2, 0)
+            )
+            glyph.width = after_width_eng_multiply
 
     for glyph in jp_font.glyphs():
         if glyph.width == 600:
