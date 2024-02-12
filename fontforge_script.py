@@ -34,6 +34,7 @@ IDEOGRAPHIC_SPACE = settings.get("DEFAULT", "IDEOGRAPHIC_SPACE")
 HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
 INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 JPDOC_STR = settings.get("DEFAULT", "JPDOC_STR")
+NERD_FONTS_STR = settings.get("DEFAULT", "NERD_FONTS_STR")
 # SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
 EM_DESCENT = int(settings.get("DEFAULT", "EM_DESCENT"))
@@ -57,6 +58,7 @@ Copyright 2022 Yuko Otawara
 """  # noqa: E501
 
 options = {}
+nerd_font = None
 
 
 def main():
@@ -350,7 +352,7 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
         INVISIBLE_ZENKAKU_SPACE_STR if options.get("invisible-zenkaku-space") else ""
     )
     variant += JPDOC_STR if options.get("jpdoc") else ""
-    variant += "NF" if options.get("nerd-font") else ""
+    variant += NERD_FONTS_STR if options.get("nerd-font") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
 
     # メタデータを編集する
@@ -475,14 +477,6 @@ def em_1000(font):
     """フォントのEMを1000に変換する"""
     em_size = EM_ASCENT + EM_DESCENT
     font.em = em_size
-
-
-def clear_glyph_range(font, start: int, end: int):
-    """グリフを削除する"""
-    for i in range(start, end + 1):
-        for glyph in font.selection.select(("ranges", None), i).byGlyphs:
-            glyph.clear()
-    font.selection.none()
 
 
 def delete_duplicate_glyphs(jp_font, eng_font):
@@ -680,52 +674,56 @@ def visualize_zenkaku_space(jp_font, eng_font):
 
 def add_nerd_font_glyphs(jp_font, eng_font):
     """Nerd Fontのグリフを追加する"""
+    global nerd_font
     # Nerd Fontのグリフを追加する
-    nerd_font = fontforge.open(
-        f"{SOURCE_FONTS_DIR}/nerd-fonts/SymbolsNerdFont-Regular.ttf"
-    )
-    nerd_font.em = EM_ASCENT + EM_DESCENT
-    for nerd_glyph in nerd_font.glyphs():
-        # 幅を調整する
-        half_width = eng_font[0x0030].width
-        if 0xE0B0 <= nerd_glyph.unicode <= 0xE0D4:
-            # Powerline Symbols の調整
-            if nerd_glyph.width < half_width:
-                nerd_glyph.transform(
-                    psMat.translate((half_width - nerd_glyph.width) / 2, 0)
-                )
-            elif nerd_glyph.width > half_width:
-                nerd_glyph.transform(psMat.scale(half_width / nerd_glyph.width, 1))
-            # 個別調整
-            if nerd_glyph.unicode == 0xE0B2:
-                nerd_glyph.transform(psMat.translate(-340, 0))
-            elif nerd_glyph.unicode == 0xE0B6:
-                nerd_glyph.transform(psMat.translate(-417, 0))
-            elif nerd_glyph.unicode == 0xE0C5:
-                nerd_glyph.transform(psMat.translate(-73, 0))
-            elif nerd_glyph.unicode == 0xE0C7:
-                nerd_glyph.transform(psMat.translate(-139, 0))
-            elif nerd_glyph.unicode == 0xE0D4:
-                nerd_glyph.transform(psMat.translate(-291, 0))
-            nerd_glyph.width = half_width
-        else:
-            if nerd_glyph.width < 600:
-                # 幅が狭いグリフは中央寄せとみなして調整する
-                nerd_glyph.transform(
-                    psMat.translate((half_width - nerd_glyph.width) / 2, 0)
-                )
-            nerd_glyph.width = half_width
-        # 日本語フォントにマージするため、既に存在する場合は削除する
-        if nerd_glyph.unicode != -1:
-            # 既に存在する場合は削除する
-            try:
-                jp_font[nerd_glyph.unicode].clear()
-            except Exception:
-                pass
-            try:
-                eng_font[nerd_glyph.unicode].clear()
-            except Exception:
-                pass
+    if nerd_font is None:
+        nerd_font = fontforge.open(
+            f"{SOURCE_FONTS_DIR}/nerd-fonts/SymbolsNerdFont-Regular.ttf"
+        )
+        nerd_font.em = EM_ASCENT + EM_DESCENT
+        for nerd_glyph in nerd_font.glyphs():
+            # 幅を調整する
+            half_width = eng_font[0x0030].width
+            if 0xE0B0 <= nerd_glyph.unicode <= 0xE0D4:
+                # Powerline Symbols の調整
+                if nerd_glyph.width < half_width:
+                    nerd_glyph.transform(
+                        psMat.translate((half_width - nerd_glyph.width) / 2, 0)
+                    )
+                    nerd_glyph.width = half_width
+                elif nerd_glyph.width > half_width:
+                    nerd_glyph.transform(psMat.scale(half_width / nerd_glyph.width, 1))
+                    nerd_glyph.width = half_width
+                # 個別調整
+                if nerd_glyph.unicode == 0xE0B2:
+                    nerd_glyph.transform(psMat.translate(-340, 0))
+                elif nerd_glyph.unicode == 0xE0B6:
+                    nerd_glyph.transform(psMat.translate(-417, 0))
+                elif nerd_glyph.unicode == 0xE0C5:
+                    nerd_glyph.transform(psMat.translate(-73, 0))
+                elif nerd_glyph.unicode == 0xE0C7:
+                    nerd_glyph.transform(psMat.translate(-139, 0))
+                elif nerd_glyph.unicode == 0xE0D4:
+                    nerd_glyph.transform(psMat.translate(-291, 0))
+                nerd_glyph.width = half_width
+            else:
+                if nerd_glyph.width < 600:
+                    # 幅が狭いグリフは中央寄せとみなして調整する
+                    nerd_glyph.transform(
+                        psMat.translate((half_width - nerd_glyph.width) / 2, 0)
+                    )
+                nerd_glyph.width = half_width
+            # 日本語フォントにマージするため、既に存在する場合は削除する
+            if nerd_glyph.unicode != -1:
+                # 既に存在する場合は削除する
+                try:
+                    jp_font[nerd_glyph.unicode].clear()
+                except Exception:
+                    pass
+                try:
+                    eng_font[nerd_glyph.unicode].clear()
+                except Exception:
+                    pass
     jp_font.mergeFonts(nerd_font)
 
 
