@@ -734,7 +734,13 @@ def add_nerd_font_glyphs(jp_font, eng_font):
             f"{SOURCE_FONTS_DIR}/nerd-fonts/SymbolsNerdFont-Regular.ttf"
         )
         nerd_font.em = EM_ASCENT + EM_DESCENT
+        glyph_names = set()
         for nerd_glyph in nerd_font.glyphs():
+            # postテーブルでのグリフ名重複対策
+            # fonttools merge で合成した後、MacOSで `'post'テーブルの使用性` エラーが発生することへの対処
+            if nerd_glyph.glyphname in glyph_names:
+                nerd_glyph.glyphname = f"{nerd_glyph.glyphname}-{nerd_glyph.encoding}"
+            glyph_names.add(nerd_glyph.glyphname)
             # 幅を調整する
             half_width = eng_font[0x0030].width
             if 0xE0B0 <= nerd_glyph.unicode <= 0xE0D4:
