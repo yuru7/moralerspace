@@ -3,6 +3,7 @@
 import configparser
 import glob
 import os
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -28,33 +29,33 @@ FULL_WIDTH_35 = int(settings.get("DEFAULT", "FULL_WIDTH_35"))
 
 
 def main():
-    edit_fonts(SUFFIX_NEON)
-    edit_fonts(SUFFIX_ARGON)
-    edit_fonts(SUFFIX_XENON)
-    edit_fonts(SUFFIX_RADON)
-    edit_fonts(SUFFIX_KRYPTON)
+    # 第一引数を取得
+    # 特定のバリエーションのみを処理するための指定
+    specific_variant = sys.argv[1] if len(sys.argv) > 1 else None
 
-    # 一時ファイルを削除
-    # スタイル部分はワイルドカードで指定
-    for filename in glob.glob(f"{BUILD_FONTS_DIR}/{FONTTOOLS_PREFIX}{FONT_NAME}*"):
-        os.remove(filename)
-    for filename in glob.glob(f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}*"):
-        os.remove(filename)
+    edit_fonts(SUFFIX_NEON, specific_variant)
+    edit_fonts(SUFFIX_ARGON, specific_variant)
+    edit_fonts(SUFFIX_XENON, specific_variant)
+    edit_fonts(SUFFIX_RADON, specific_variant)
+    edit_fonts(SUFFIX_KRYPTON, specific_variant)
 
 
-def edit_fonts(suffix):
+def edit_fonts(suffix: str, specific_variant: str):
     """フォントを編集する"""
 
+    if specific_variant is None:
+        specific_variant = ""
+
     # ファイルをパターンで指定
-    filenames = glob.glob(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}*-eng.ttf"
-    )
-    # ファイルが見つからない or 複数見つかった場合はエラー
+    file_pattern = f"{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{specific_variant}*-eng.ttf"
+    filenames = glob.glob(f"{BUILD_FONTS_DIR}/{file_pattern}")
+    # ファイルが見つからない場合はエラー
     if len(filenames) == 0:
-        print(f"Error: {FONTFORGE_PREFIX}{FONT_NAME}{suffix}*.ttf not found")
+        print(f"Error: {file_pattern} not found")
         return
     paths = [Path(f) for f in filenames]
     for path in paths:
+        print(f"edit {str(path)}")
         style = path.stem.split("-")[1]
         variant = path.stem.split("-")[0].replace(
             f"{FONTFORGE_PREFIX}{FONT_NAME}{suffix}", ""
@@ -62,6 +63,17 @@ def edit_fonts(suffix):
         add_hinting(str(path), str(path).replace(".ttf", "-hinted.ttf"))
         merge_fonts(suffix, style, variant)
         fix_font_tables(suffix, style, variant)
+
+    # 一時ファイルを削除
+    # スタイル部分以降はワイルドカードで指定
+    for filename in glob.glob(
+        f"{BUILD_FONTS_DIR}/{FONTTOOLS_PREFIX}{FONT_NAME}{suffix}{specific_variant}*"
+    ):
+        os.remove(filename)
+    for filename in glob.glob(
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{specific_variant}*"
+    ):
+        os.remove(filename)
 
 
 def add_hinting(input_font_path, output_font_path):

@@ -9,21 +9,22 @@ New-Item -ItemType Directory -Force -Path ".\release_files\"
 # ビルドフォルダを削除
 Remove-Item -Path .\build -Recurse -Force
 
+# 並列処理内で、処理が重いNerd Fontsのビルドを優先して処理する
 $option_and_output_folder = @(
-    "--do-not-delete-build-dir", # ビルド 通常版
-    "--do-not-delete-build-dir --half-width", # ビルド 1:2幅版
-    "--do-not-delete-build-dir --jpdoc", # ビルド JPDOC版
-    "--do-not-delete-build-dir --half-width --jpdoc", # ビルド 1:2幅 JPDOC版
-    "--do-not-delete-build-dir --nerd-font", # ビルド 通常版 + Nerd Fonts
-    "--do-not-delete-build-dir --half-width --nerd-font" # ビルド 1:2幅版 + Nerd Fonts
+    @("--nerd-font", "NF-"), # ビルド 通常版 + Nerd Fonts
+    @("--half-width --nerd-font", "HWNF-"), # ビルド 1:2幅版 + Nerd Fonts
+    @("", "-"), # ビルド 通常版
+    @("--half-width", "HW-"), # ビルド 1:2幅版
+    @("--jpdoc", "JPDOC-"), # ビルド JPDOC版
+    @("--half-width --jpdoc", "HWJPDOC-") # ビルド 1:2幅 JPDOC版
 )
 
 $option_and_output_folder | Foreach-Object -ThrottleLimit 4 -Parallel {
-    Write-Host "fontforge script option: `"$($_)`""
-    Invoke-Expression "& `"C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe`" --lang=py -script .\fontforge_script.py $($_)"
+    Write-Host "fontforge script start. option: `"$($_[0])`""
+    Invoke-Expression "& `"C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe`" --lang=py -script .\fontforge_script.py --do-not-delete-build-dir $($_[0])" `
+        && Write-Host "fonttools script start. option: `"$($_[1])`"" `
+        && python fonttools_script.py $_[1]
 }
-
-python fonttools_script.py
 
 $move_file_src_dest = @(
     @("MoralerspaceNeon-*.ttf", "Moralerspace_$version"),
@@ -69,7 +70,7 @@ $move_file_src_dest = @(
     @("MoralerspaceKryptonHWNF-*.ttf", "MoralerspaceHWNF_$version")
 )
 
-$move_file_src_dest | Foreach-Object -ThrottleLimit 4 -Parallel {
+$move_file_src_dest | Foreach-Object {
     $folder_path = ".\release_files\$($_[1])"
     New-Item -ItemType Directory -Force -Path $folder_path
     Move-Item -Path ".\build\$($_[0])" -Destination $folder_path -Force
