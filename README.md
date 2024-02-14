@@ -46,7 +46,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 # 必要パッケージのインストール
 pip install -r requirements.txt
 # ビルド
-& "C:\Program Files (x86)\FontForgeBuilds\bin\fontforge.exe" --lang=py -script .\fontforge_script.py && python fonttools_script.py
+& "C:\Program Files (x86)\FontForgeBuilds\bin\ffpython.exe" .\fontforge_script.py && python fonttools_script.py
 ```
 
 ### Linux
