@@ -302,12 +302,12 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # fonttools merge エラー対処
     altuni_to_entity(jp_font)
 
-    # 重複するグリフを削除する
-    delete_duplicate_glyphs(jp_font, eng_font)
-
     # 日本語文書に頻出する記号を英語フォントから削除する
     if options.get("jpdoc"):
-        remove_jpdoc_symbols(jp_font, eng_font)
+        remove_jpdoc_symbols(eng_font)
+
+    # 重複するグリフを削除する
+    delete_duplicate_glyphs(jp_font, eng_font)
 
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
@@ -344,7 +344,7 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
     # 全角スペースを可視化する
     if not options.get("invisible-zenkaku-space"):
-        visualize_zenkaku_space(jp_font, eng_font)
+        visualize_zenkaku_space(jp_font)
 
     # Nerd Fontのグリフを追加する
     if options.get("nerd-font"):
@@ -566,7 +566,7 @@ def slashed_zero(font):
     font.selection.none()
 
 
-def remove_jpdoc_symbols(jp_font, eng_font):
+def remove_jpdoc_symbols(eng_font):
     """日本語文書に頻出する記号を削除する"""
     eng_font.selection.none()
     # § (U+00A7)
@@ -709,20 +709,13 @@ def transform_half_width(jp_font, eng_font):
             glyph.width = after_width_eng * 2
 
 
-def visualize_zenkaku_space(jp_font, eng_font):
+def visualize_zenkaku_space(jp_font):
     """全角スペースを可視化する"""
-    # 別名情報を解除
-    jp_font.selection.select(("unicode", None), 0x2003)
+    # 全角スペースを差し替え
+    jp_font.selection.select("U+3000")
     for glyph in jp_font.selection.byGlyphs:
-        glyph.altuni = None
-
-    jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{IDEOGRAPHIC_SPACE}"))
-
-    # 全角スペースをクリア
-    eng_font.selection.select(("unicode", None), 0x3000)
-    for glyph in eng_font.selection.byGlyphs:
         glyph.clear()
-    eng_font.selection.none()
+    jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{IDEOGRAPHIC_SPACE}"))
 
 
 def add_nerd_font_glyphs(jp_font, eng_font):
