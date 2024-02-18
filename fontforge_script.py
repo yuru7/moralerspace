@@ -63,6 +63,7 @@ Copyright 2022 Yuko Otawara
 """  # noqa: E501
 
 options = {}
+hack_font = None
 nerd_font = None
 
 
@@ -311,9 +312,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
 
-    # Box Drawing, Block Elements を追加する
-    add_box_drawing_block_elements(eng_font)
-
     # 日本語文書に頻出する記号を英語フォントから削除する
     if options.get("jpdoc"):
         remove_jpdoc_symbols(eng_font)
@@ -353,6 +351,9 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # 全角スペースを可視化する
     if not options.get("invisible-zenkaku-space"):
         visualize_zenkaku_space(jp_font)
+
+    # Box Drawing, Block Elements を追加する
+    add_box_drawing_block_elements(jp_font, eng_font)
 
     # Nerd Fontのグリフを追加する
     if options.get("nerd-font"):
@@ -523,31 +524,6 @@ def make_italic_radon(jp_font):
 def em_1000(font):
     """フォントのEMを1000に変換する"""
     font.em = EM_ASCENT + EM_DESCENT
-
-
-def add_box_drawing_block_elements(font):
-    """Box Drawing, Block Elements を追加する"""
-    hack_font = fontforge.open(f"{SOURCE_FONTS_DIR}/hack/Hack-Regular.ttf")
-    # 対象記号を選択
-    for uni in range(0x2500, 0x259F + 1):
-        hack_font.selection.select(("more", "unicode"), uni)
-        font.selection.select(("more", "unicode"), uni)
-    # マージする記号のみを残す
-    hack_font.selection.invert()
-    for glyph in hack_font.selection.byGlyphs:
-        glyph.clear()
-    # マージする範囲をあらかじめ削除
-    for glyph in font.selection.byGlyphs:
-        glyph.clear()
-    # サイズ、位置合わせ
-    hack_font.em = EM_ASCENT + EM_DESCENT
-    for glyph in hack_font.glyphs():
-        if glyph.isWorthOutputting():
-            glyph.transform(psMat.translate((600 - glyph.width) / 2, 0))
-            glyph.width = 600
-    # マージする
-    font.mergeFonts(hack_font)
-    hack_font.close()
 
 
 def delete_duplicate_glyphs(jp_font, eng_font):
@@ -748,6 +724,47 @@ def visualize_zenkaku_space(jp_font):
     for glyph in jp_font.selection.byGlyphs:
         glyph.clear()
     jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{IDEOGRAPHIC_SPACE}"))
+
+
+def add_box_drawing_block_elements(jp_font, eng_font):
+    """Box Drawing, Block Elements を追加する"""
+    global hack_font
+    if hack_font is None:
+        hack_font = fontforge.open(f"{SOURCE_FONTS_DIR}/hack/Hack-Regular.ttf")
+        hack_font.em = EM_ASCENT + EM_DESCENT
+        half_width = eng_font[0x0030].width
+        # 対象記号を選択
+        for uni in range(0x2500, 0x259F + 1):
+            hack_font.selection.select(("more", "unicode"), uni)
+        # マージする記号のみを残す
+        hack_font.selection.invert()
+        for glyph in hack_font.selection.byGlyphs:
+            hack_font.removeGlyph(glyph)
+        # 位置合わせ
+        for glyph in hack_font.glyphs():
+            if glyph.isWorthOutputting():
+                glyph.transform(psMat.translate((half_width - glyph.width) / 2, 0))
+                glyph.width = half_width
+    # マージする範囲をあらかじめ削除
+    eng_font.selection.none()
+    for uni in range(0x2500, 0x259F + 1):
+        try:
+            eng_font.selection.select(("more", "unicode"), uni)
+        except Exception:
+            pass
+    for glyph in eng_font.selection.byGlyphs:
+        glyph.clear()
+    # jpdoc 版の場合は罫線を日本語フォント優先にする
+    if not options.get("jpdoc"):
+        jp_font.selection.none()
+        for uni in range(0x2500, 0x259F + 1):
+            try:
+                jp_font.selection.select(("more", "unicode"), uni)
+            except Exception:
+                pass
+        for glyph in jp_font.selection.byGlyphs:
+            glyph.clear()
+    jp_font.mergeFonts(hack_font)
 
 
 def add_nerd_font_glyphs(jp_font, eng_font):
