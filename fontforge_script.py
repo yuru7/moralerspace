@@ -81,10 +81,10 @@ def main():
         os.mkdir(BUILD_FONTS_DIR)
 
     generate_neon()
-    # generate_argon()
-    # generate_xenon()
-    # generate_radon()
-    # generate_krypton()
+    generate_argon()
+    generate_xenon()
+    generate_radon()
+    generate_krypton()
 
 
 def generate_neon():
