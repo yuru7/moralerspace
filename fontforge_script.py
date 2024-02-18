@@ -7,6 +7,7 @@ import math
 import os
 import shutil
 import sys
+import uuid
 
 import fontforge
 import psMat
@@ -305,9 +306,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # 合成するフォントを開く
     jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
 
-    # fonttools merge エラー対処
-    altuni_to_entity(jp_font)
-
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
@@ -373,11 +371,15 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     edit_meta_data(jp_font, merged_style, variant, suffix)
 
     # ttfファイルに保存
+    # ヒンティングが残っていると不具合に繋がりがちなので外す。
+    # ヒンティングはあとで ttfautohint で行う。
     eng_font.generate(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf",
+        flags=("no-hints",),
     )
     jp_font.generate(
-        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-jp.ttf"
+        f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-jp.ttf",
+        flags=("no-hints",),
     )
 
     # ttfを閉じる
@@ -392,7 +394,9 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
         eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Medium":
-            jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
+            jp_font.mergeFonts(
+                fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Medium.ttf")
+            )
         elif jp_style == "Bold":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
     elif suffix == SUFFIX_KRYPTON:
@@ -407,45 +411,14 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
         jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf")
         eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
 
+    # fonttools merge エラー対処
+    jp_font = altuni_to_entity(jp_font)
+
     # フォント参照を解除する
     jp_font.unlinkReferences()
     eng_font.unlinkReferences()
 
     return jp_font, eng_font
-
-
-def fonttools_merge_error_workaround(jp_font):
-    # fonttools merge エラー対処
-    # "Have non-identical duplicates to resolve for 'IBM Plex Sans JP Text' but no GSUB. Are duplicates intended?"
-    font_path = jp_font.path
-    if "IBMPlexSansJP" in font_path:
-        for glyph_name in [
-            "uni02CA",
-            "endash",
-            "uni0336",
-        ]:
-            # Alternate Unicodeになっているグリフをコピーする
-            glyph = jp_font[glyph_name]
-            encoding = glyph.encoding
-            altuni = glyph.altuni
-            if altuni is not None:
-                glyph.altuni = None
-                copy_target_glyph = jp_font.createChar(encoding)
-                copy_target_glyph.clear()
-                copy_target_glyph.width = glyph.width
-                copy_target_glyph.addReference(glyph.glyphname)
-            # グリフを削除する
-            jp_font.removeGlyph(glyph_name)
-        # エンコーディングを整理するため、開き直す
-        jp_font.generate(
-            f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}_temp_jp_font.ttf"
-        )
-        jp_font.close()
-        return fontforge.open(
-            f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}_temp_jp_font.ttf"
-        )
-    else:
-        return jp_font
 
 
 def altuni_to_entity(jp_font):
@@ -479,8 +452,14 @@ def altuni_to_entity(jp_font):
                     jp_font.selection.select(copy_target_glyph.glyphname)
                     jp_font.paste()
                 before_altuni = ",".join(map(str, altuni))
-
-    return jp_font
+    # エンコーディングの整理のため、開き直す
+    font_path = f"{BUILD_FONTS_DIR}/{jp_font.fullname}_{uuid.uuid4()}.ttf"
+    jp_font.generate(font_path)
+    jp_font.close()
+    reopen_jp_font = fontforge.open(font_path)
+    # 一時ファイルを削除
+    os.remove(font_path)
+    return reopen_jp_font
 
 
 def adjust_some_glyph(jp_font, eng_font):
@@ -504,11 +483,14 @@ def adjust_some_glyph(jp_font, eng_font):
         glyph.transform(psMat.translate(180, 0))
         glyph.width = full_width
     # LEFT SINGLE QUOTATION MARK (U+2018) ～ DOUBLE LOW-9 QUOTATION MARK (U+201E) の幅を全角幅にする
-    for glyph in jp_font.selection.select(
-        ("ranges", "unicode"), 0x2018, 0x201E
-    ).byGlyphs:
-        glyph.transform(psMat.translate((full_width - glyph.width) / 2, 0))
-        glyph.width = full_width
+    for uni in range(0x2018, 0x201E + 1):
+        try:
+            glyph = jp_font[uni]
+            glyph.transform(psMat.translate((full_width - glyph.width) / 2, 0))
+            glyph.width = full_width
+        except TypeError:
+            # グリフが存在しない場合は継続する
+            continue
     jp_font.selection.none()
 
 
