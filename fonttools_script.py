@@ -186,12 +186,12 @@ def fix_os2_table(xml: ET, style: str, flag_hw: bool = False):
         x_avg_char_width = HALF_WIDTH_12
     else:
         x_avg_char_width = FULL_WIDTH_35
-    for elem in xml.iter("xAvgCharWidth"):
-        elem.set("value", str(x_avg_char_width))
+    xml.find("OS_2/xAvgCharWidth").set("value", str(x_avg_char_width))
 
     # fsSelectionを編集
     # タグ形式: <fsSelection value="00000000 11000000" />
     # スタイルに応じたビットを立てる
+    fs_selection = None
     if style == "Regular":
         fs_selection = "00000001 01000000"
     elif style == "Italic":
@@ -201,9 +201,8 @@ def fix_os2_table(xml: ET, style: str, flag_hw: bool = False):
     elif style == "BoldItalic":
         fs_selection = "00000001 00100001"
 
-    if fs_selection:
-        for elem in xml.iter("fsSelection"):
-            elem.set("value", fs_selection)
+    if fs_selection is not None:
+        xml.find("OS_2/fsSelection").set("value", fs_selection)
 
     # panoseを編集
     # タグ形式:
@@ -251,8 +250,7 @@ def fix_os2_table(xml: ET, style: str, flag_hw: bool = False):
         }
 
     for key, value in panose.items():
-        for elem in xml.iter(key):
-            elem.set("value", str(value))
+        xml.find(f"OS_2/panose/{key}").set("value", str(value))
 
 
 def fix_post_table(xml: ET):
@@ -260,8 +258,7 @@ def fix_post_table(xml: ET):
     # isFixedPitchを編集
     # タグ形式: <isFixedPitch value="0"/>
     is_fixed_pitch = 0
-    for elem in xml.iter("isFixedPitch"):
-        elem.set("value", str(is_fixed_pitch))
+    xml.find("post/isFixedPitch").set("value", str(is_fixed_pitch))
 
 
 if __name__ == "__main__":
