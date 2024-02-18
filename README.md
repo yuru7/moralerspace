@@ -26,6 +26,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 - 文字の懐が広く読みやすい IBM 製 [IBM Plex Sans JP](https://github.com/IBM/plex) 由来の日本語文字
     - Radon 系統には [キウイ丸 (Kiwi-Maru)](https://github.com/Kiwi-KawagotoKajiru/Kiwi-Maru) をベースに、足りないグリフを IBM Plex Sans JP で補完
     - Krypton 系統には [Stick](https://github.com/fontworks-fonts/Stick) をベースに、足りないグリフを IBM Plex Sans JP で補完
+- 罫線素片などの一部半角記号は、 [Hack](https://github.com/source-foundry/Hack) より追加合成
 - 文字幅比率が 半角3:全角5、ゆとりのある幅の半角英数字
 - バグの原因になりがちな全角スペースが可視化される
 
