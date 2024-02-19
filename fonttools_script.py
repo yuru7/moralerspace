@@ -90,7 +90,7 @@ def add_hinting(input_font_path, output_font_path):
         "-S",
         "-W",
         "-X",
-        "13-",
+        "",
         "-I",
         input_font_path,
         output_font_path,

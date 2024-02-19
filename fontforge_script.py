@@ -469,9 +469,15 @@ def adjust_some_glyph(jp_font, eng_font):
     underscore_before_width = underscore.width
     underscore.transform(psMat.scale(0.77, 1))
     underscore.transform(
-        psMat.translate((underscore_before_width - underscore.width) / 2, 0)
+        psMat.translate((underscore_before_width - underscore.width) / 2, 60)
     )
     underscore.width = underscore_before_width
+    # ハイフンが隣接すると繋がっているように見えるため短くする
+    hyphen = eng_font[0x002D]
+    hyphen_before_width = hyphen.width
+    hyphen.transform(psMat.scale(0.9, 1))
+    hyphen.transform(psMat.translate((hyphen_before_width - hyphen.width) / 2, 0))
+    hyphen.width = hyphen_before_width
     # 全角括弧の開きを広くする
     full_width = jp_font[0x3042].width
     for glyph_name in [0xFF08, 0xFF3B, 0xFF5B]:
@@ -681,7 +687,7 @@ def transform_half_width(jp_font, eng_font):
             # リガチャ考慮
             after_width_eng_multiply = after_width_eng * round(glyph.width / 600)
             # 縮小
-            glyph.transform(psMat.scale(x_scale, 1))
+            glyph.transform(psMat.scale(x_scale, 0.99))
             # 幅を設定
             glyph.transform(
                 psMat.translate((after_width_eng_multiply - glyph.width) / 2, 0)
