@@ -59,6 +59,9 @@ Copyright 2020 The Stick Project Authors https://github.com/fontworks-fonts/Stic
 [Hack]
 Copyright 2018 Source Foundry Authors https://github.com/source-foundry/Hack
 
+[Nerd Fonts]
+Copyright (c) 2014, Ryan L McIntyre https://ryanlmcintyre.com
+
 [Moralerspace]
 Copyright 2022 Yuko Otawara
 """  # noqa: E501
