@@ -369,6 +369,11 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     variant += NERD_FONTS_STR if options.get("nerd-font") else ""
     # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
 
+    # macOSでのpostテーブルの使用性エラー対策
+    # 重複するグリフ名を持つグリフをリネームする
+    delete_glyphs_with_duplicate_glyph_names(eng_font)
+    delete_glyphs_with_duplicate_glyph_names(jp_font)
+
     # メタデータを編集する
     edit_meta_data(eng_font, merged_style, variant, suffix)
     edit_meta_data(jp_font, merged_style, variant, suffix)
@@ -463,6 +468,16 @@ def altuni_to_entity(jp_font):
     # 一時ファイルを削除
     os.remove(font_path)
     return reopen_jp_font
+
+
+def delete_glyphs_with_duplicate_glyph_names(font):
+    """重複するグリフ名を持つグリフをリネームする"""
+    glyph_name_set = set()
+    for glyph in font.glyphs():
+        if glyph.glyphname in glyph_name_set:
+            glyph.glyphname = f"{glyph.glyphname}_{glyph.encoding}"
+        else:
+            glyph_name_set.add(glyph.glyphname)
 
 
 def adjust_some_glyph(jp_font, eng_font):
