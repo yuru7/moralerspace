@@ -36,7 +36,6 @@ HALF_WIDTH_STR = settings.get("DEFAULT", "HALF_WIDTH_STR")
 INVISIBLE_ZENKAKU_SPACE_STR = settings.get("DEFAULT", "INVISIBLE_ZENKAKU_SPACE_STR")
 JPDOC_STR = settings.get("DEFAULT", "JPDOC_STR")
 NERD_FONTS_STR = settings.get("DEFAULT", "NERD_FONTS_STR")
-# SLASHED_ZERO_STR = settings.get("DEFAULT", "SLASHED_ZERO_STR")
 EM_ASCENT = int(settings.get("DEFAULT", "EM_ASCENT"))
 EM_DESCENT = int(settings.get("DEFAULT", "EM_DESCENT"))
 OS2_ASCENT = int(settings.get("DEFAULT", "OS2_ASCENT"))
@@ -288,8 +287,6 @@ def get_options():
         # オプション判定
         if arg == "--do-not-delete-build-dir":
             options["do-not-delete-build-dir"] = True
-        elif arg == "--slashed-zero":
-            options["slashed-zero"] = True
         elif arg == "--invisible-zenkaku-space":
             options["invisible-zenkaku-space"] = True
         elif arg == "--half-width":
@@ -331,10 +328,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     if italic:
         transform_italic_glyphs(jp_font)
 
-    # スラッシュ付きゼロ
-    if options.get("slashed-zero"):
-        slashed_zero(eng_font)
-
     # eng_fontを半角幅(600)にする
     width_600(eng_font)
 
@@ -367,7 +360,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     )
     variant += JPDOC_STR if options.get("jpdoc") else ""
     variant += NERD_FONTS_STR if options.get("nerd-font") else ""
-    # variant += SLASHED_ZERO_STR if options.get("slashed-zero") else ""
 
     # macOSでのpostテーブルの使用性エラー対策
     # 重複するグリフ名を持つグリフをリネームする
@@ -379,15 +371,12 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     edit_meta_data(jp_font, merged_style, variant, suffix)
 
     # ttfファイルに保存
-    # ヒンティングが残っていると不具合に繋がりがちなので外す。
-    # ヒンティングはあとで ttfautohint で行う。
+    # フラグを立てると後続のバリエーションの生成にまで影響が出るため、GSUB, GPOSテーブルが削除されるため注意
     eng_font.generate(
         f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf",
-        flags=("no-hints",),
     )
     jp_font.generate(
         f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-jp.ttf",
-        flags=("no-hints",),
     )
 
     # ttfを閉じる
@@ -398,7 +387,9 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
     """フォントを開く"""
     if suffix == SUFFIX_RADON:
-        jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_RADON}{jp_style}.ttf")
+        jp_font = fontforge.open(
+            f"{SOURCE_FONTS_DIR}/{JP_FONT_RADON}{jp_style}_dehint.ttf"
+        )
         eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Medium":
@@ -423,7 +414,13 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
     jp_font = altuni_to_entity(jp_font)
 
     # フォント参照を解除する
+    for glyph in jp_font.glyphs():
+        if glyph.isWorthOutputting():
+            jp_font.selection.select(("more", None), glyph)
     jp_font.unlinkReferences()
+    for glyph in eng_font.glyphs():
+        if glyph.isWorthOutputting():
+            eng_font.selection.select(("more", None), glyph)
     eng_font.unlinkReferences()
 
     return jp_font, eng_font
@@ -569,15 +566,6 @@ def transform_italic_glyphs(font):
     # 全グリフを斜体に変換
     for glyph in font.glyphs():
         glyph.transform(psMat.skew(ITALIC_SLOPE * math.pi / 180))
-
-
-def slashed_zero(font):
-    # "zero.zero" を "zero" にコピーする
-    font.selection.select("zero.zero")
-    font.copy()
-    font.selection.select(("unicode", None), 0x0030)
-    font.paste()
-    font.selection.none()
 
 
 def remove_jpdoc_symbols(eng_font):
@@ -784,6 +772,7 @@ def add_nerd_font_glyphs(jp_font, eng_font):
         nerd_font.em = EM_ASCENT + EM_DESCENT
         glyph_names = set()
         for nerd_glyph in nerd_font.glyphs():
+            nerd_glyph.glyphname = f"{nerd_glyph.glyphname}-nf"
             # postテーブルでのグリフ名重複対策
             # fonttools merge で合成した後、MacOSで `'post'テーブルの使用性` エラーが発生することへの対処
             if nerd_glyph.glyphname in glyph_names:
