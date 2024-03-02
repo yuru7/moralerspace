@@ -27,6 +27,7 @@ JP_FONT = settings.get("DEFAULT", "JP_FONT")
 JP_FONT_RADON = settings.get("DEFAULT", "JP_FONT_RADON")
 JP_FONT_KRYPTON = settings.get("DEFAULT", "JP_FONT_KRYPTON")
 ENG_FONT = settings.get("DEFAULT", "ENG_FONT")
+HACK_FONT = settings.get("DEFAULT", "HACK_FONT")
 SOURCE_FONTS_DIR = settings.get("DEFAULT", "SOURCE_FONTS_DIR")
 BUILD_FONTS_DIR = settings.get("DEFAULT", "BUILD_FONTS_DIR")
 VENDER_NAME = settings.get("DEFAULT", "VENDER_NAME")
@@ -66,7 +67,6 @@ Copyright 2022 Yuko Otawara
 """  # noqa: E501
 
 options = {}
-hack_font = None
 nerd_font = None
 
 
@@ -304,11 +304,14 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     print(f"=== Generate {suffix} {merged_style} ===")
 
     # 合成するフォントを開く
-    jp_font, eng_font = open_fonts(jp_style, f"{suffix}-{eng_style}", suffix)
+    jp_font, eng_font = open_fonts(jp_style, eng_style, suffix)
 
     # フォントのEMを1000に変換する
     # jp_font は既に1000なので eng_font のみ変換する
     em_1000(eng_font)
+
+    # Hack フォントをマージする
+    merge_hack(eng_font, eng_style)
 
     # 日本語文書に頻出する記号を英語フォントから削除する
     if options.get("jpdoc"):
@@ -345,9 +348,6 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     # 全角スペースを可視化する
     if not options.get("invisible-zenkaku-space"):
         visualize_zenkaku_space(jp_font)
-
-    # Box Drawing, Block Elements を追加する
-    add_box_drawing_block_elements(jp_font, eng_font)
 
     # Nerd Fontのグリフを追加する
     if options.get("nerd-font"):
@@ -386,11 +386,14 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
 
 def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
     """フォントを開く"""
+    suffix_eng_style = f"{suffix}-{eng_style}"
     if suffix == SUFFIX_RADON:
         jp_font = fontforge.open(
             f"{SOURCE_FONTS_DIR}/{JP_FONT_RADON}{jp_style}_dehint.ttf"
         )
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+        eng_font = fontforge.open(
+            f"{SOURCE_FONTS_DIR}/{ENG_FONT}{suffix_eng_style}.otf"
+        )
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Medium":
             jp_font.mergeFonts(
@@ -400,7 +403,9 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
     elif suffix == SUFFIX_KRYPTON:
         jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT_KRYPTON}{jp_style}.ttf")
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+        eng_font = fontforge.open(
+            f"{SOURCE_FONTS_DIR}/{ENG_FONT}{suffix_eng_style}.otf"
+        )
         # 足りないグラフをIBM Plex Sans JPで補う
         if jp_style == "Regular":
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Text.ttf"))
@@ -408,7 +413,9 @@ def open_fonts(jp_style: str, eng_style: str, suffix: str = ""):
             jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}Bold.ttf"))
     else:
         jp_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{JP_FONT}{jp_style}.ttf")
-        eng_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{ENG_FONT}{eng_style}.otf")
+        eng_font = fontforge.open(
+            f"{SOURCE_FONTS_DIR}/{ENG_FONT}{suffix_eng_style}.otf"
+        )
 
     # fonttools merge エラー対処
     jp_font = altuni_to_entity(jp_font)
@@ -720,26 +727,32 @@ def visualize_zenkaku_space(jp_font):
     jp_font.mergeFonts(fontforge.open(f"{SOURCE_FONTS_DIR}/{IDEOGRAPHIC_SPACE}"))
 
 
-def add_box_drawing_block_elements(jp_font, eng_font):
-    """Box Drawing, Block Elements を追加する"""
-    global hack_font
-    if hack_font is None:
-        hack_font = fontforge.open(f"{SOURCE_FONTS_DIR}/hack/Hack-Regular.ttf")
-        hack_font.em = EM_ASCENT + EM_DESCENT
-        half_width = eng_font[0x0030].width
-        # 対象記号を選択
-        for uni in range(0x2500, 0x259F + 1):
-            hack_font.selection.select(("more", "unicode"), uni)
-        # マージする記号のみを残す
-        hack_font.selection.invert()
-        for glyph in hack_font.selection.byGlyphs:
-            hack_font.removeGlyph(glyph)
-        # 位置合わせ
-        for glyph in hack_font.glyphs():
-            if glyph.isWorthOutputting():
-                glyph.transform(psMat.translate((half_width - glyph.width) / 2, 0))
-                glyph.width = half_width
-    # マージする範囲をあらかじめ削除
+def merge_hack(eng_font, eng_style):
+    """Hack フォントをマージする"""
+    hack_font = fontforge.open(f"{SOURCE_FONTS_DIR}/{HACK_FONT}{eng_style}.ttf")
+    hack_font.em = EM_ASCENT + EM_DESCENT
+    # 既に英語フォント側に存在する場合はhackグリフは削除する
+    for glyph in eng_font.glyphs():
+        if glyph.unicode != -1:
+            try:
+                for g in hack_font.selection.select(
+                    ("unicode", None), glyph.unicode
+                ).byGlyphs:
+                    g.clear()
+            except Exception:
+                pass
+    # monaspace を EM 1000 にしたときの幅に合わせて調整
+    half_width = 620
+    for glyph in hack_font.glyphs():
+        if glyph.width > 0:
+            glyph.transform(psMat.translate((half_width - glyph.width) / 2, 0))
+            glyph.width = half_width
+    # Hack フォントをオブジェクトとして扱いたくないので、一旦ファイル保存して直接マージする
+    font_path = f"{BUILD_FONTS_DIR}/tmp_hack_{uuid.uuid4()}.ttf"
+    hack_font.generate(font_path)
+    hack_font.close()
+
+    # Box Drawing, Block Elements のマージのため、英語フォントから削除する
     eng_font.selection.none()
     for uni in range(0x2500, 0x259F + 1):
         try:
@@ -748,17 +761,9 @@ def add_box_drawing_block_elements(jp_font, eng_font):
             pass
     for glyph in eng_font.selection.byGlyphs:
         glyph.clear()
-    # jpdoc 版の場合は罫線を日本語フォント優先にする
-    if not options.get("jpdoc"):
-        jp_font.selection.none()
-        for uni in range(0x2500, 0x259F + 1):
-            try:
-                jp_font.selection.select(("more", "unicode"), uni)
-            except Exception:
-                pass
-        for glyph in jp_font.selection.byGlyphs:
-            glyph.clear()
-    jp_font.mergeFonts(hack_font)
+
+    eng_font.mergeFonts(font_path)
+    os.remove(font_path)
 
 
 def add_nerd_font_glyphs(jp_font, eng_font):
