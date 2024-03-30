@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import uuid
+from decimal import ROUND_HALF_UP, Decimal
 
 import fontforge
 import psMat
@@ -341,6 +342,8 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     if options.get("half-width"):
         # 1:2 幅にする
         transform_half_width(jp_font, eng_font)
+        # 規定の幅からはみ出したグリフサイズを縮小する
+        down_scale_redundant_size_glyph(eng_font)
 
     # GSUBテーブルを削除する (ひらがな等の全角文字が含まれる行でリガチャが解除される対策)
     remove_lookups(jp_font)
@@ -367,11 +370,21 @@ def generate_font(jp_style, eng_style, merged_style, suffix, italic=False):
     delete_glyphs_with_duplicate_glyph_names(jp_font)
 
     # メタデータを編集する
-    edit_meta_data(eng_font, merged_style, variant, suffix)
-    edit_meta_data(jp_font, merged_style, variant, suffix)
+    cap_height = int(
+        Decimal(str(eng_font[0x0048].boundingBox()[3])).quantize(
+            Decimal("0"), ROUND_HALF_UP
+        )
+    )
+    x_height = int(
+        Decimal(str(eng_font[0x0078].boundingBox()[3])).quantize(
+            Decimal("0"), ROUND_HALF_UP
+        )
+    )
+    edit_meta_data(eng_font, merged_style, variant, suffix, cap_height, x_height)
+    edit_meta_data(jp_font, merged_style, variant, suffix, cap_height, x_height)
 
     # ttfファイルに保存
-    # フラグを立てると後続のバリエーションの生成にまで影響が出るため、GSUB, GPOSテーブルが削除されるため注意
+    # なんらかフラグを立てるとGSUB, GPOSテーブルが削除されて後続の生成処理で影響が出るため注意
     eng_font.generate(
         f"{BUILD_FONTS_DIR}/{FONTFORGE_PREFIX}{FONT_NAME}{suffix}{variant}-{merged_style}-eng.ttf",
     )
@@ -718,6 +731,41 @@ def transform_half_width(jp_font, eng_font):
             glyph.width = after_width_eng * 2
 
 
+def down_scale_redundant_size_glyph(eng_font):
+    """規定の幅からはみ出したグリフサイズを縮小する"""
+
+    # 元々の x=0 の位置が縮小後、はみ出した場合の位置
+    x_zero_pos_after_reduction = -10
+
+    for glyph in eng_font.glyphs():
+        bounding_x_min = glyph.boundingBox()[0]
+        if (
+            glyph.width > 0
+            and bounding_x_min < 0
+            and not (
+                0x0020 <= glyph.unicode <= 0x02AF
+            )  # latin 系のグリフ 0x0020 - 0x0192 は無視
+            and not (
+                0xE0B0 <= glyph.unicode <= 0xE0D4
+            )  # Powerline系のグリフ 0xE0B0 - 0xE0D4 は無視
+            and not (
+                0x2500 <= glyph.unicode <= 0x257F
+            )  # 罫線系のグリフ 0x2500 - 0x257F は無視
+            and not (
+                0x2591 <= glyph.unicode <= 0x2593
+            )  # SHADE グリフ 0x2591 - 0x2593 は無視
+        ):
+            before_width = glyph.width
+            if bounding_x_min > x_zero_pos_after_reduction:
+                x_scale = 1 + (bounding_x_min * 2) / glyph.width
+            else:
+                # はみ出し幅が特定の値以上の場合は縮小率を固定する
+                x_scale = 1 + (x_zero_pos_after_reduction * 2) / glyph.width
+            glyph.transform(psMat.scale(x_scale, 1))
+            glyph.transform(psMat.translate((before_width - glyph.width) / 2, 0))
+            glyph.width = before_width
+
+
 def visualize_zenkaku_space(jp_font):
     """全角スペースを可視化する"""
     # 全角スペースを差し替え
@@ -832,25 +880,28 @@ def add_nerd_font_glyphs(jp_font, eng_font):
     jp_font.mergeFonts(nerd_font)
 
 
-def edit_meta_data(font, weight: str, variant: str, suffix: str):
+def edit_meta_data(
+    font, weight: str, variant: str, suffix: str, cap_height: int, x_height: int
+):
     """フォント内のメタデータを編集する"""
     font.ascent = EM_ASCENT
     font.descent = EM_DESCENT
 
-    if NERD_FONTS_STR in variant:
-        # Nerd Fonts の場合は typoascent, typodescent を EM ascent, EM descent よりも大きくする
-        font.os2_typoascent = OS2_ASCENT
-        font.os2_typodescent = -OS2_DESCENT
-    else:
-        font.os2_typoascent = EM_ASCENT
-        font.os2_typodescent = -EM_DESCENT
-    font.os2_typolinegap = 0
-    font.os2_winascent = OS2_ASCENT
-    font.os2_windescent = OS2_DESCENT
+    os2_ascent = OS2_ASCENT
+    os2_descent = OS2_DESCENT
 
-    font.hhea_ascent = OS2_ASCENT
-    font.hhea_descent = -OS2_DESCENT
+    font.os2_typoascent = os2_ascent
+    font.os2_typodescent = -os2_descent
+    font.os2_winascent = os2_ascent
+    font.os2_windescent = os2_descent
+    font.os2_typolinegap = 0
+
+    font.hhea_ascent = os2_ascent
+    font.hhea_descent = -os2_descent
     font.hhea_linegap = 0
+
+    font.os2_xheight = x_height
+    font.os2_capheight = cap_height
 
     font.sfnt_names = (
         (
