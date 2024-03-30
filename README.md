@@ -10,7 +10,12 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
  (＿＿)＿_)
 ```
 
-[🆕 **ダウンロード**](https://github.com/yuru7/moralerspace/releases)  
+## インストール
+
+リリースページより ttf ファイルをダウンロードし、各 OS ごとの方法でインストールしてください。
+
+[🆕 **ダウンロードはこちら**](https://github.com/yuru7/moralerspace/releases)
+
 ※「Assets」内の zip ファイルをダウンロードしてご利用ください。
 
 > 💡 その他、公開中のプログラミングフォント
