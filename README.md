@@ -31,7 +31,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
     - 半角1:全角2 幅のバリエーションもあり
 - バグの原因になりがちな全角スペースが可視化される
 
-![sample](https://github.com/yuru7/moralerspace/assets/13458509/61188400-71e3-4436-9dbc-bc9b8a62b8eb)
+![sample](https://github.com/yuru7/moralerspace/assets/13458509/21d90d22-0178-4c41-a28c-7b15b7b17ecf)
 
 ## ビルド
 
