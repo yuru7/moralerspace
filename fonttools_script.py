@@ -133,7 +133,7 @@ def fix_font_tables(suffix, style, variant):
     # OS/2 テーブルを編集
     fix_os2_table(xml, style, flag_hw=HALF_WIDTH_STR in variant)
     # post テーブルを編集
-    fix_post_table(xml)
+    fix_post_table(xml, flag_hw=HALF_WIDTH_STR in variant)
 
     # ttxファイルを上書き保存
     xml.write(
@@ -253,11 +253,11 @@ def fix_os2_table(xml: ET, style: str, flag_hw: bool = False):
         xml.find(f"OS_2/panose/{key}").set("value", str(value))
 
 
-def fix_post_table(xml: ET):
+def fix_post_table(xml: ET, flag_hw: bool = False):
     """post テーブルを編集する"""
     # isFixedPitchを編集
     # タグ形式: <isFixedPitch value="0"/>
-    is_fixed_pitch = 0
+    is_fixed_pitch = 1 if flag_hw else 0
     xml.find("post/isFixedPitch").set("value", str(is_fixed_pitch))
 
 
