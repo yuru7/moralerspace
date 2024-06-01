@@ -14,7 +14,7 @@ Moralerspace は、欧文フォント [Monaspace](https://github.com/githubnext/
 
 リリースページより ttf ファイルをダウンロードし、各 OS ごとの方法でインストールしてください。
 
-[🆕 **ダウンロードはこちら**](https://github.com/yuru7/moralerspace/releases)
+[🆕 **ダウンロードはこちら**](https://github.com/yuru7/moralerspace/releases/latest)
 
 ※「Assets」内の zip ファイルをダウンロードしてご利用ください。
 
