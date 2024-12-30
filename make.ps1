@@ -39,12 +39,6 @@ $move_file_src_dest = @(
     @("MoralerspaceRadonHW-*.ttf", "MoralerspaceHW_$version"),
     @("MoralerspaceKryptonHW-*.ttf", "MoralerspaceHW_$version"),
 
-    @("MoralerspaceNeonHW-*.ttf", "MoralerspaceHW_$version"),
-    @("MoralerspaceArgonHW-*.ttf", "MoralerspaceHW_$version"),
-    @("MoralerspaceXenonHW-*.ttf", "MoralerspaceHW_$version"),
-    @("MoralerspaceRadonHW-*.ttf", "MoralerspaceHW_$version"),
-    @("MoralerspaceKryptonHW-*.ttf", "MoralerspaceHW_$version"),
-
     @("MoralerspaceNeonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
     @("MoralerspaceArgonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
     @("MoralerspaceXenonJPDOC-*.ttf", "MoralerspaceJPDOC_$version"),
