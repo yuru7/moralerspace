@@ -101,6 +101,11 @@ def generate_neon():
         merged_style="Regular",
         suffix=SUFFIX_NEON,
     )
+
+    # デバッグモードの場合はRegularのみ生成する
+    if options.get("debug"):
+        return
+
     # Bold スタイルを生成する
     generate_font(
         jp_style="Bold",
@@ -136,6 +141,11 @@ def generate_argon():
         merged_style="Regular",
         suffix=SUFFIX_ARGON,
     )
+
+    # デバッグモードの場合はRegularのみ生成する
+    if options.get("debug"):
+        return
+
     # Bold スタイルを生成する
     generate_font(
         jp_style="Bold",
@@ -171,6 +181,11 @@ def generate_xenon():
         merged_style="Regular",
         suffix=SUFFIX_XENON,
     )
+
+    # デバッグモードの場合はRegularのみ生成する
+    if options.get("debug"):
+        return
+
     # Bold スタイルを生成する
     generate_font(
         jp_style="Bold",
@@ -206,6 +221,11 @@ def generate_radon():
         merged_style="Regular",
         suffix=SUFFIX_RADON,
     )
+
+    # デバッグモードの場合はRegularのみ生成する
+    if options.get("debug"):
+        return
+
     # Bold スタイルを生成する
     generate_font(
         jp_style="Bold",
@@ -242,6 +262,11 @@ def generate_krypton():
         merged_style="Regular",
         suffix=SUFFIX_KRYPTON,
     )
+
+    # デバッグモードの場合はRegularのみ生成する
+    if options.get("debug"):
+        return
+
     # Bold スタイルを生成する
     generate_font(
         jp_style="Bold",
@@ -296,6 +321,8 @@ def get_options():
             options["jpdoc"] = True
         elif arg == "--nerd-font":
             options["nerd-font"] = True
+        elif arg == "--debug":
+            options["debug"] = True
         else:
             options["unknown-option"] = True
             return
@@ -500,19 +527,14 @@ def delete_glyphs_with_duplicate_glyph_names(font):
 def adjust_some_glyph(jp_font, eng_font):
     """いくつかのグリフ形状に調整を加える"""
     # アンダースコアが隣接すると繋がっているように見えるため短くする
+    # 位置も少し上にずらす
     underscore = eng_font[0x005F]
     underscore_before_width = underscore.width
-    underscore.transform(psMat.scale(0.77, 1))
+    underscore.transform(psMat.scale(0.91, 1))
     underscore.transform(
         psMat.translate((underscore_before_width - underscore.width) / 2, 60)
     )
     underscore.width = underscore_before_width
-    # ハイフンが隣接すると繋がっているように見えるため短くする
-    hyphen = eng_font[0x002D]
-    hyphen_before_width = hyphen.width
-    hyphen.transform(psMat.scale(0.9, 1))
-    hyphen.transform(psMat.translate((hyphen_before_width - hyphen.width) / 2, 0))
-    hyphen.width = hyphen_before_width
     # 全角括弧の開きを広くする
     full_width = jp_font[0x3042].width
     for glyph_name in [0xFF08, 0xFF3B, 0xFF5B]:
@@ -563,7 +585,6 @@ def delete_duplicate_glyphs(jp_font, eng_font):
             # Encoding is out of range のときは継続する
             continue
     for glyph in eng_font.selection.byGlyphs:
-        # if glyph.isWorthOutputting():
         jp_font.selection.select(("more", "unicode"), glyph.unicode)
     for glyph in jp_font.selection.byGlyphs:
         glyph.clear()
