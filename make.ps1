@@ -9,10 +9,7 @@ New-Item -ItemType Directory -Force -Path ".\release_files\"
 # ビルドフォルダを削除
 Remove-Item -Path .\build -Recurse -Force
 
-# 並列処理内で、処理が重いNerd Fontsのビルドを優先して処理する
 $option_and_output_folder = @(
-    @("--nerd-font", "NF-"), # ビルド 通常版 + Nerd Fonts
-    @("--half-width --nerd-font", "HWNF-"), # ビルド 1:2幅版 + Nerd Fonts
     @("", "-"), # ビルド 通常版
     @("--half-width", "HW-"), # ビルド 1:2幅版
     @("--jpdoc", "JPDOC-"), # ビルド JPDOC版
@@ -49,19 +46,7 @@ $move_file_src_dest = @(
     @("MoralerspaceArgonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
     @("MoralerspaceXenonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
     @("MoralerspaceRadonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
-    @("MoralerspaceKryptonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version"),
-
-    @("MoralerspaceNeonNF-*.ttf", "MoralerspaceNF_$version"),
-    @("MoralerspaceArgonNF-*.ttf", "MoralerspaceNF_$version"),
-    @("MoralerspaceXenonNF-*.ttf", "MoralerspaceNF_$version"),
-    @("MoralerspaceRadonNF-*.ttf", "MoralerspaceNF_$version"),
-    @("MoralerspaceKryptonNF-*.ttf", "MoralerspaceNF_$version"),
-
-    @("MoralerspaceNeonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
-    @("MoralerspaceArgonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
-    @("MoralerspaceXenonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
-    @("MoralerspaceRadonHWNF-*.ttf", "MoralerspaceHWNF_$version"),
-    @("MoralerspaceKryptonHWNF-*.ttf", "MoralerspaceHWNF_$version")
+    @("MoralerspaceKryptonHWJPDOC-*.ttf", "MoralerspaceHWJPDOC_$version")
 )
 
 $timestamp = Get-Date -Format "yyyyMMddHHmmss"
