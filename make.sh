@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# ini から VERSION を取得
-version=$(grep "VERSION" build.ini | cut -d "=" -f 2 | xargs)
-
 # スクリプトファイルがある場所に移動する
 cd "$(dirname "$0")"
+
+# ini から VERSION を取得
+version=$(grep "VERSION" build.ini | cut -d "=" -f 2 | xargs)
 
 # 各ファイルを置くフォルダを作成
 mkdir -p "./release_files/"
@@ -14,16 +14,12 @@ rm -rf ./build
 
 # 並列処理
 option=(
-  "--nerd-font"
-  "--half-width --nerd-font"
-  " "
+  ""
   "--half-width"
   "--jpdoc"
   "--half-width --jpdoc"
 )
 output_folder=(
-  "NF-"
-  "HWNF-"
   "-"
   "HW-"
   "JPDOC-"
@@ -42,7 +38,7 @@ function run_build() {
 export -f run_build
 
 # parallelコマンドで並列実行
-parallel -j -1 --progress --link run_build ::: "${option[@]}" ::: "${output_folder[@]}"
+parallel -j -1 --halt soon,fail=1 --link run_build ::: "${option[@]}" ::: "${output_folder[@]}"
 
 # ファイル移動
 declare -A move_file_src_dest=(
@@ -69,18 +65,6 @@ declare -A move_file_src_dest=(
   ["MoralerspaceXenonHWJPDOC-*.ttf"]="MoralerspaceHWJPDOC_$version"
   ["MoralerspaceRadonHWJPDOC-*.ttf"]="MoralerspaceHWJPDOC_$version"
   ["MoralerspaceKryptonHWJPDOC-*.ttf"]="MoralerspaceHWJPDOC_$version"
-
-  ["MoralerspaceNeonNF-*.ttf"]="MoralerspaceNF_$version"
-  ["MoralerspaceArgonNF-*.ttf"]="MoralerspaceNF_$version"
-  ["MoralerspaceXenonNF-*.ttf"]="MoralerspaceNF_$version"
-  ["MoralerspaceRadonNF-*.ttf"]="MoralerspaceNF_$version"
-  ["MoralerspaceKryptonNF-*.ttf"]="MoralerspaceNF_$version"
-
-  ["MoralerspaceNeonHWNF-*.ttf"]="MoralerspaceHWNF_$version"
-  ["MoralerspaceArgonHWNF-*.ttf"]="MoralerspaceHWNF_$version"
-  ["MoralerspaceXenonHWNF-*.ttf"]="MoralerspaceHWNF_$version"
-  ["MoralerspaceRadonHWNF-*.ttf"]="MoralerspaceHWNF_$version"
-  ["MoralerspaceKryptonHWNF-*.ttf"]="MoralerspaceHWNF_$version"
 )
 
 timestamp=$(date +%Y%m%d%H%M%S)
