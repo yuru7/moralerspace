@@ -81,9 +81,7 @@ def main():
     # buildディレクトリを作成する
     if os.path.exists(BUILD_FONTS_DIR) and not options.get("do-not-delete-build-dir"):
         shutil.rmtree(BUILD_FONTS_DIR)
-        os.mkdir(BUILD_FONTS_DIR)
-    if not os.path.exists(BUILD_FONTS_DIR):
-        os.mkdir(BUILD_FONTS_DIR)
+    os.makedirs(BUILD_FONTS_DIR, exist_ok=True)
 
     generate_neon()
     generate_argon()
